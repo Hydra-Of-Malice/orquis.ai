@@ -1,0 +1,172 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.alertBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background-color: var(--indigo-light);
+  border: 1px solid var(--indigo);
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+}
+
+.alertIcon {
+  color: var(--indigo);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.alertMeta h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--indigo);
+}
+
+.alertMeta p {
+  font-size: 12px;
+  color: var(--text-subtle);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* Rules Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+.ruleCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ruleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.ruleTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cpuIcon {
+  color: var(--indigo);
+}
+
+.ruleHeader h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ruleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stepRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.stepBlock {
+  flex: 1;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.arrowRow {
+  display: flex;
+  padding-left: 60px;
+}
+
+.stepArrow {
+  color: var(--text-muted);
+  transform: rotate(90deg);
+}
+
+.actionItem {
+  margin-bottom: 4px;
+}
+
+.actionItem:last-child {
+  margin-bottom: 0;
+}
+
+/* Workflows modal forms builder */
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formGroup label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-subtle);
+}
+
+.dropdownSelect {
+  height: 40px;
+  background: var(--card-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 0 12px;
+  outline: none;
+  font-size: 13px;
+  width: 100%;
+}
+
+.dropdownSelect:focus {
+  border-color: var(--indigo);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}

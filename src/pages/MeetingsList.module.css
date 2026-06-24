@@ -1,0 +1,527 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+/* Advanced Filter Box */
+.filterContainer {
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tabsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tabs {
+  display: flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  gap: 2px;
+}
+
+.tabBtn {
+  background: transparent;
+  color: var(--text-subtle);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.tabBtn:hover {
+  color: var(--text);
+}
+
+.tabActive {
+  background: var(--card);
+  color: var(--indigo);
+  box-shadow: var(--shadow-sm);
+}
+
+.viewToggle {
+  display: flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.toggleBtn {
+  background: transparent;
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.toggleBtn:hover {
+  color: var(--text);
+}
+
+.toggleActive {
+  background: var(--card);
+  color: var(--indigo);
+  box-shadow: var(--shadow-sm);
+}
+
+.selectorsRow {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.searchInputWrapper {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  height: 38px;
+  transition: all var(--transition-normal);
+}
+
+.searchInputWrapper:focus-within {
+  border-color: var(--indigo);
+  background: var(--bg);
+  box-shadow: var(--shadow-glow);
+}
+
+.searchIcon {
+  color: var(--text-muted);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.searchField {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  outline: none;
+  color: var(--text);
+}
+
+.clearSearch {
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.clearSearch:hover {
+  color: var(--text);
+}
+
+.selects {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filterSelect {
+  padding: 0 12px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.filterSelect:hover {
+  border-color: var(--border-hover);
+}
+
+.filterSelect:focus {
+  border-color: var(--indigo);
+}
+
+/* Listings Scroll & Grouping */
+.listingsScroll {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.groupSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sectionHeader h2 {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+}
+
+.pulseDotRed {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red);
+  animation: pulse 1.5s infinite;
+}
+
+.pulseDotAmber {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+  animation: pulse 1.5s infinite;
+}
+
+/* Grid View */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.meetingCard {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.meetingCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--indigo);
+  box-shadow: var(--shadow-glow);
+}
+
+.processingCard {
+  border-style: dashed;
+}
+
+.platformStrip {
+  height: 4px;
+  width: 100%;
+}
+
+.strip-zoom { background-color: var(--zoom-color); }
+.strip-meet { background-color: var(--meet-color); }
+.strip-teams { background-color: var(--teams-color); }
+.strip-uploaded { background-color: var(--indigo); }
+
+.cardPadding {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.zoomBadge { background-color: var(--zoom-bg); color: var(--zoom-color); }
+.teamsBadge { background-color: var(--teams-bg); color: var(--teams-color); }
+.meetBadge { background-color: var(--meet-bg); color: var(--meet-color); }
+.uploadedBadge { background-color: var(--card-hover); color: var(--text-subtle); }
+
+.dateLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.liveIndicator {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--red);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--red-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--red);
+  animation: pulse 1.5s infinite;
+}
+
+.processingIndicator {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--indigo);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--indigo-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.pulseBar {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--indigo);
+  animation: pulse 1.5s infinite;
+}
+
+.cardBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.meetingTitle {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.cardDisplayTime {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.cardExcerpt {
+  font-size: 12px;
+  color: var(--text-subtle);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.avatarsList {
+  display: flex;
+  margin-left: 4px;
+}
+
+.avatarsList > div {
+  margin-left: -6px;
+  border: 2px solid var(--card);
+}
+
+.avatarsList > div:first-child {
+  margin-left: 0;
+}
+
+.healthContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.svgRing {
+  width: 32px;
+  height: 32px;
+  transform: rotate(-90deg);
+}
+
+.circleBg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 2.5;
+}
+
+.circleFg {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 75.4;
+  transition: stroke-dashoffset 0.8s ease-out;
+}
+
+.healthVal {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* List Row View */
+.listView {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  gap: 16px;
+}
+
+.listRow:hover {
+  background: var(--card-hover);
+  border-color: var(--indigo);
+  transform: translateX(3px);
+}
+
+.processingRow {
+  border-style: dashed;
+}
+
+.platformBadgeCell {
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.rowMainInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0; /* truncate text correctly */
+}
+
+.rowTitle {
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowExcerpt {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowTimeCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 150px;
+  flex-shrink: 0;
+}
+
+.rowDurationCell {
+  width: 80px;
+  font-size: 12px;
+  color: var(--text-subtle);
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.rowAvatars {
+  width: 100px;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rowHealthBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.healthDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.healthScoreText {
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  color: var(--text-subtle);
+}
+
+.rowCta {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.listRow:hover .rowCta {
+  color: var(--indigo);
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}

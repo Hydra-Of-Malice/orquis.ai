@@ -1,0 +1,82 @@
+# Teams DOM selectors — Microsoft rotates data-tid values frequently.
+# scraper.py tries the value here first, then falls through its internal
+# ordered fallback list automatically, so a single broken selector will
+# NOT silently drop all names.
+#
+# Update the primary values here whenever Microsoft pushes a Teams web
+# update that breaks the bot; the semantic/aria fallbacks below act as
+# a safety net in the meantime.
+
+# ── Pre-join screen ───────────────────────────────────────────────────
+prejoin_screen: "[data-tid='prejoin-screen']"
+toggle_camera: "[data-tid='toggle-video']"
+toggle_mic: "[data-tid='toggle-mute']"
+name_input: "[data-tid='prejoin-display-name-input']"
+join_button: "[data-tid='prejoin-join-button']"
+
+# Semantic/aria fallbacks for pre-join (used by teams_bot.py directly
+# if the primary selectors above fail):
+join_button_fallbacks:
+  - "[data-tid='prejoin-join-button']"
+  - "button[aria-label='Join now']"
+  - "button[aria-label*='join' i]"
+  - "button:has-text('Join now')"
+
+name_input_fallbacks:
+  - "[data-tid='prejoin-display-name-input']"
+  - "input[aria-label='Enter your name']"
+  - "input[placeholder*='name' i]"
+  - "input[type='text']"
+
+# ── In-meeting indicators ─────────────────────────────────────────────
+in_meeting_indicator: "[data-tid='hangup-button']"
+meeting_ended: "[data-tid='meeting-ended']"
+
+in_meeting_indicator_fallbacks:
+  - "[data-tid='hangup-button']"
+  - "button[aria-label='Leave']"
+  - "button[aria-label*='leave' i]"
+  - "[class*='hangup']"
+
+# ── Roster / participants ─────────────────────────────────────────────
+# Primary selector pair — used by scraper.py first.
+roster_button: "[data-tid='roster-button']"
+participant_names: "[data-tid='roster-participant'] [data-tid='participant-display-name']"
+
+# Ordered semantic fallbacks for the roster open button:
+roster_button_fallbacks:
+  - "[data-tid='roster-button']"
+  - "[data-tip='People']"
+  - "button[aria-label='People']"
+  - "button[aria-label*='participant' i]"
+  - "[aria-label='Show participants']"
+  - "[class*='peopleButton']"
+
+# Ordered semantic fallbacks for participant name elements:
+participant_name_fallbacks:
+  - "[data-tid='roster-participant'] [data-tid='participant-display-name']"
+  - "[data-tid='roster-participant'] span[class*='name']"
+  - "[class*='roster'] [class*='participantDisplayName']"
+  - "[class*='participants-list'] [class*='name']"
+  - "li[class*='participant'] span[class*='name']"
+  - "[aria-label*='participant'] [class*='name']"
+
+# ── Meeting controls ──────────────────────────────────────────────────
+mute_button: "[data-tid='toggle-mute']"
+hangup_button: "[data-tid='hangup-button']"
+
+mute_button_fallbacks:
+  - "[data-tid='toggle-mute']"
+  - "button[aria-label='Mute']"
+  - "button[aria-label='Unmute']"
+  - "button[aria-label*='mute' i]"
+
+# ── Video tile name overlays (DOM strategy for JS name poller) ────────
+# The JS interceptor in meet_bot.py also probes these to correlate
+# video tiles to participant display names.
+video_tile_name_fallbacks:
+  - "[data-tid='video-tile'] [data-tid='display-name']"
+  - "[class*='videoTile'] [class*='displayName']"
+  - "[class*='video-tile'] [class*='name']"
+  - "[class*='participantVideoTile'] span[class*='name']"
+  - "[data-participant-id] [class*='name']"

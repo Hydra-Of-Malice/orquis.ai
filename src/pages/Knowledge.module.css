@@ -1,0 +1,393 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.subTabBar {
+  display: flex;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  gap: 16px;
+}
+
+.subTabBtn {
+  background: transparent;
+  color: var(--text-subtle);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 14px 4px;
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-fast);
+}
+
+.subTabBtn:hover {
+  color: var(--text);
+}
+
+.subTabActive {
+  color: var(--indigo);
+  font-weight: 600;
+}
+
+.subTabActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--indigo);
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+/* Catalog Filter search */
+.searchRow {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  gap: 10px;
+}
+
+.searchIcon {
+  color: var(--text-muted);
+}
+
+.searchInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  outline: none;
+  color: var(--text);
+}
+
+/* Projects grid */
+.projects {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.projCard {
+  display: flex;
+  flex-direction: column;
+  height: 210px;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.projHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.iconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.projName {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.projDesc {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.projProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.projProgressLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.projProgressRail {
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: var(--radius-full);
+}
+
+.projProgressFill {
+  height: 100%;
+  background: var(--indigo);
+  border-radius: var(--radius-full);
+}
+
+.projFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.arrow {
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.projCard:hover .arrow {
+  transform: translateX(4px);
+  color: var(--indigo);
+}
+
+/* Topics Explorer Styles */
+.topics {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.topicsCloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 20px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.topicNode {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  gap: 4px;
+}
+
+.topicNode:hover {
+  transform: translateY(-2px);
+  border-color: var(--indigo);
+  box-shadow: var(--shadow-sm);
+}
+
+.topicNodeMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.tagIcon {
+  color: var(--indigo);
+}
+
+.topicBadge {
+  font-size: 10px;
+  font-weight: 700;
+  background-color: var(--indigo-light);
+  color: var(--indigo);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  line-height: 1;
+}
+
+.topicNodeMeta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.nodeHigh {
+  border-left: 3px solid var(--indigo);
+}
+.nodeMedium {
+  border-left: 3px solid var(--emerald);
+}
+.nodeLow {
+  border-left: 3px solid var(--border-hover);
+}
+
+.timelineCard {
+  padding: 20px;
+}
+
+.timelineHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.sparkleIcon {
+  color: var(--indigo);
+}
+
+.timelineCard h3 {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  padding-left: 20px;
+}
+
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 4px;
+  bottom: 4px;
+  width: 1.5px;
+  background-color: var(--border);
+}
+
+.timelineItem {
+  display: flex;
+  position: relative;
+}
+
+.timelineDot {
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--indigo);
+  border: 2px solid var(--card);
+}
+
+.timelineMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timelineDate {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.timelineMeta strong {
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.timelineMeta p {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  line-height: 1.4;
+}
+
+/* People profiles */
+.people {
+  display: flex;
+  flex-direction: column;
+}
+
+.peopleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.peopleCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.peopleCard:hover {
+  transform: translateY(-2px);
+}
+
+.personName {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  margin-top: 12px;
+}
+
+.personRole {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  margin-top: 2px;
+}
+
+.personStats {
+  display: flex;
+  width: 100%;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  margin: 16px 0;
+  justify-content: space-around;
+}
+
+.personStatItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.personStatItem span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.personStatItem strong {
+  font-size: 14.5px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.personActions {
+  width: 100%;
+}

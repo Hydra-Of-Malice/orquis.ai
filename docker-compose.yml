@@ -1,0 +1,212 @@
+services:
+  # ── PostgreSQL + pgvector ───────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: zapper-pm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zapper
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: zapper_pm
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zapper -d zapper_pm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [zapper-pm-net]
+
+  # ── Redis 7 ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: zapper-pm-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [zapper-pm-net]
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zapper-pm-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://zapper:${DB_PASSWORD}@postgres:5432/zapper_pm
+      DATABASE_URL_SYNC: postgresql://zapper:${DB_PASSWORD}@postgres:5432/zapper_pm
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      BOT_RUNNER_URL: http://bot-runner:5001
+      MAX_CONCURRENT_BOTS: ${MAX_CONCURRENT_BOTS:-4}
+      STORAGE_PATH: /data/recordings
+      # LLM (DB-stored settings override these env defaults)
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_API_STYLE: ${LLM_API_STYLE:-}
+      LLM_ENDPOINT: ${LLM_ENDPOINT:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL_MAIN: ${LLM_MODEL_MAIN:-}
+      LLM_MODEL_MINI: ${LLM_MODEL_MINI:-}
+      # Azure Foundry fallback
+      AZURE_FOUNDRY_ENDPOINT: ${AZURE_FOUNDRY_ENDPOINT:-}
+      AZURE_FOUNDRY_KEY: ${AZURE_FOUNDRY_KEY:-}
+      AZURE_FOUNDRY_GPT4O_DEPLOYMENT: ${AZURE_FOUNDRY_GPT4O_DEPLOYMENT:-gpt-4o}
+      AZURE_FOUNDRY_GPT4O_MINI_DEPLOYMENT: ${AZURE_FOUNDRY_GPT4O_MINI_DEPLOYMENT:-gpt-4o-mini}
+      # Azure Blob Storage
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-recordings}
+      # Integrations OAuth
+      JIRA_CLIENT_ID: ${JIRA_CLIENT_ID:-}
+      JIRA_CLIENT_SECRET: ${JIRA_CLIENT_SECRET:-}
+      LINEAR_CLIENT_ID: ${LINEAR_CLIENT_ID:-}
+      LINEAR_CLIENT_SECRET: ${LINEAR_CLIENT_SECRET:-}
+      SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
+      SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_DEFAULT_CHANNEL: ${SLACK_DEFAULT_CHANNEL:-general}
+      NOTION_CLIENT_ID: ${NOTION_CLIENT_ID:-}
+      NOTION_CLIENT_SECRET: ${NOTION_CLIENT_SECRET:-}
+    volumes:
+      - recordings:/data/recordings
+    ports:
+      - "8000:8000"
+    networks: [zapper-pm-net]
+
+  # ── DB Migrations (one-shot) ───────────────────────────────────────────────
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zapper-pm-migrate
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL_SYNC: postgresql://zapper:${DB_PASSWORD}@postgres:5432/zapper_pm
+    command: >
+      sh -c "cd /app && alembic upgrade head"
+    networks: [zapper-pm-net]
+
+  # ── Celery Worker (AI pipeline) ────────────────────────────────────────────
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: zapper-pm-worker
+    restart: unless-stopped
+    command: celery -A celery_app worker --loglevel=info -Q transcription,analysis -c 4
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL_SYNC: postgresql://zapper:${DB_PASSWORD}@postgres:5432/zapper_pm
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_PATH: /data/recordings
+      SPEECHBRAIN_CACHE_DIR: /data/models/speechbrain
+      VOICE_MATCH_THRESHOLD: ${VOICE_MATCH_THRESHOLD:-0.70}
+      # LLM / Whisper config
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_API_STYLE: ${LLM_API_STYLE:-}
+      LLM_ENDPOINT: ${LLM_ENDPOINT:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL_MAIN: ${LLM_MODEL_MAIN:-}
+      LLM_MODEL_MINI: ${LLM_MODEL_MINI:-}
+      AZURE_FOUNDRY_ENDPOINT: ${AZURE_FOUNDRY_ENDPOINT:-}
+      AZURE_FOUNDRY_KEY: ${AZURE_FOUNDRY_KEY:-}
+      AZURE_FOUNDRY_WHISPER_DEPLOYMENT: ${AZURE_FOUNDRY_WHISPER_DEPLOYMENT:-whisper}
+      AZURE_FOUNDRY_GPT4O_DEPLOYMENT: ${AZURE_FOUNDRY_GPT4O_DEPLOYMENT:-gpt-4o}
+      AZURE_FOUNDRY_GPT4O_MINI_DEPLOYMENT: ${AZURE_FOUNDRY_GPT4O_MINI_DEPLOYMENT:-gpt-4o-mini}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-}
+      TRANSCRIPT_LLM_CORRECT: ${TRANSCRIPT_LLM_CORRECT:-true}
+      TRANSCRIPT_LLM_BATCH: ${TRANSCRIPT_LLM_BATCH:-25}
+      TRANSCRIPT_LLM_MAX_TOKENS: ${TRANSCRIPT_LLM_MAX_TOKENS:-4000}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-recordings}
+    volumes:
+      - recordings:/data/recordings
+      - models:/data/models
+    networks: [zapper-pm-net]
+
+  # ── Bot Runner (Playwright meeting bots) ───────────────────────────────────
+  bot-runner:
+    build:
+      context: ./bot-runner
+      dockerfile: Dockerfile
+    container_name: zapper-pm-bot
+    restart: unless-stopped
+    privileged: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:8000
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL_SYNC: postgresql://zapper:${DB_PASSWORD}@postgres:5432/zapper_pm
+      BOT_DISPLAY_NAME: ${BOT_DISPLAY_NAME:-Zapper Recorder}
+      BOT_LOBBY_TIMEOUT_SECONDS: ${BOT_LOBBY_TIMEOUT_SECONDS:-300}
+      MAX_CONCURRENT_BOTS: ${MAX_CONCURRENT_BOTS:-4}
+      STORAGE_PATH: /data/recordings
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      # Live transcription
+      LIVE_ENGINE: ${LIVE_ENGINE:-whisper}
+      LIVE_LANGUAGE: ${LIVE_LANGUAGE:-}
+      LIVE_WHISPER_BACKEND: ${LIVE_WHISPER_BACKEND:-foundry}
+      LIVE_LLM_CORRECT: ${LIVE_LLM_CORRECT:-false}
+      # Azure
+      AZURE_FOUNDRY_ENDPOINT: ${AZURE_FOUNDRY_ENDPOINT:-}
+      AZURE_FOUNDRY_KEY: ${AZURE_FOUNDRY_KEY:-}
+      AZURE_FOUNDRY_WHISPER_DEPLOYMENT: ${AZURE_FOUNDRY_WHISPER_DEPLOYMENT:-whisper}
+      AZURE_FOUNDRY_GPT4O_MINI_DEPLOYMENT: ${AZURE_FOUNDRY_GPT4O_MINI_DEPLOYMENT:-gpt-4o-mini}
+      AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY:-}
+      AZURE_SPEECH_ENDPOINT: ${AZURE_SPEECH_ENDPOINT:-}
+      AZURE_TTS_VOICE: ${AZURE_TTS_VOICE:-en-US-AriaNeural}
+      BOT_GOOGLE_EMAIL: ${BOT_GOOGLE_EMAIL:-}
+      BOT_GOOGLE_PASSWORD: ${BOT_GOOGLE_PASSWORD:-}
+    volumes:
+      - recordings:/data/recordings
+    networks: [zapper-pm-net]
+
+  # ── Nginx Reverse Proxy ────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.26-alpine
+    container_name: zapper-pm-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./dist:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks: [zapper-pm-net]
+
+volumes:
+  pgdata:
+  redisdata:
+  recordings:
+  models:
+
+networks:
+  zapper-pm-net:
+    driver: bridge

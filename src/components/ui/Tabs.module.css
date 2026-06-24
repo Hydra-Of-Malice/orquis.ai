@@ -1,0 +1,59 @@
+.tabsContainer {
+  width: 100%;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.tabList {
+  display: flex;
+  gap: 24px;
+}
+
+.tabBtn {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 12px 4px;
+  color: var(--text-subtle);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color var(--transition-fast);
+}
+
+.tabBtn:hover {
+  color: var(--text);
+}
+
+.active {
+  color: var(--indigo);
+  font-weight: 600;
+}
+
+.active:hover {
+  color: var(--indigo);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+}
+
+.activeIndicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--indigo);
+  border-radius: var(--radius-full) var(--radius-full) 0 0;
+  animation: slideIn var(--transition-fast) forwards;
+}
+
+@keyframes slideIn {
+  from { transform: scaleX(0.7); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
+}

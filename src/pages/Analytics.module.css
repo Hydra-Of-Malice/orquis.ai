@@ -1,0 +1,645 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.subTabBar {
+  display: flex;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  gap: 16px;
+}
+
+.subTabBtn {
+  background: transparent;
+  color: var(--text-subtle);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 14px 4px;
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-fast);
+}
+
+.subTabBtn:hover {
+  color: var(--text);
+}
+
+.subTabActive {
+  color: var(--indigo);
+  font-weight: 600;
+}
+
+.subTabActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--indigo);
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* ================= OVERVIEW ================= */
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.timeReclaimedCard {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.timeReclaimedMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reclaimedLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.reclaimedValue {
+  font-size: 28px;
+  font-weight: var(--weight-bold);
+  color: var(--indigo);
+}
+
+.reclaimedSub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.reclaimedIconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--indigo-light);
+  color: var(--indigo);
+}
+
+.clockAnim {
+  animation: clock-spin 10s linear infinite;
+}
+
+@keyframes clock-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+.chartCard {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.chartCard h3 {
+  font-size: 14.5px;
+  font-weight: var(--weight-semibold);
+}
+
+.chartHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.chartSub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.chartWrapper {
+  height: 180px;
+  width: 100%;
+}
+
+.radarMetricCard {
+  align-items: center;
+}
+
+.radarMetricCard h3 {
+  align-self: flex-start;
+}
+
+.radarMetricCard p {
+  align-self: flex-start;
+}
+
+.radarContainer {
+  width: 220px;
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* AI Insights */
+.splitRowGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 1024px) {
+  .splitRowGrid {
+    grid-template-columns: 1.2fr 1fr;
+  }
+}
+
+.aiInsightsCard {
+  padding: 20px;
+}
+
+.aiInsightsHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.brainIcon {
+  color: var(--indigo);
+}
+
+.aiInsightsHeader h3 {
+  font-size: 14.5px;
+  font-weight: var(--weight-semibold);
+}
+
+.insightsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.insightItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.insightSpark {
+  color: var(--indigo);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.insightItem p {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  line-height: 1.4;
+}
+
+.insightItem p strong {
+  color: var(--text);
+}
+
+.heatmapCard {
+  padding: 20px;
+}
+
+.heatmapCard h3 {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+}
+
+.heatmapHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.timeframeToggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.timeframeBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-subtle);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.timeframeBtn:hover {
+  color: var(--text);
+  background: var(--card-hover);
+}
+
+.timeframeBtnActive {
+  background: var(--card);
+  color: var(--indigo);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.contributionChartWrapper {
+  margin-top: 16px;
+  margin-left: -20px;
+  margin-right: -20px;
+  margin-bottom: -20px;
+  height: 220px;
+  position: relative;
+}
+
+/* ================= TEAM INSIGHTS ================= */
+.teamTab {
+  display: flex;
+  flex-direction: column;
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .teamGrid {
+    grid-template-columns: 1.2fr 1fr;
+  }
+}
+
+.membersColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.subHeading {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.memberCards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.memberCard {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.memberCard:hover {
+  transform: translateY(-2px);
+}
+
+.memberHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.memberTitleGroup {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.memberName {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
+.memberRole {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.memberMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  text-align: center;
+  background: var(--bg-subtle);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+}
+
+.memberMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.mValue {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text-subtle);
+}
+
+.memberProgressGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progressText {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  font-weight: var(--weight-semibold);
+}
+
+.progressRail {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: var(--radius-full);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--indigo);
+  border-radius: var(--radius-full);
+}
+
+.leaderboardColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.leaderboardCard {
+  padding: 20px;
+}
+
+.leaderboardCard h3 {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+}
+
+.leaderboardChartWrapper {
+  height: 180px;
+  width: 100%;
+}
+
+/* ================= MY COACHING ================= */
+.coachingTab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.coachingAlert {
+  display: flex;
+  background-color: var(--indigo-light);
+  border: 1px solid var(--indigo);
+  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.alertIcon {
+  color: var(--indigo);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.coachingTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.alertText h4 {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--indigo);
+}
+
+.alertText p {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  line-height: 1.4;
+}
+
+.coachingGoalsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.goalProgressCard {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.goalProgressCard:hover {
+  transform: translateY(-2px);
+}
+
+.goalMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.goalName {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.goalMetricVal {
+  font-size: 24px;
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
+.goalTargetText {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.goalRight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.goalSpark {
+  height: 20px;
+  width: 60px;
+}
+
+.tipsCard {
+  padding: 20px;
+}
+
+.tipsCard h3 {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  margin-bottom: 2px;
+}
+
+.exerciseList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exerciseRow {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  transition: all var(--transition-fast);
+}
+
+.exerciseCompleted {
+  opacity: 0.75;
+  border-color: var(--emerald-light);
+  background: rgba(16, 185, 129, 0.01);
+}
+
+.exerciseHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.exerciseMainInfo {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.exerciseNumber {
+  width: 24px;
+  height: 24px;
+  background-color: var(--indigo-light);
+  color: var(--indigo);
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.exerciseCompleted .exerciseNumber {
+  background-color: var(--emerald-light);
+  color: var(--emerald);
+}
+
+.exerciseMainInfo strong {
+  font-size: 13.5px;
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.exerciseMainInfo p {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+  line-height: 1.5;
+}
+
+.completeExBtn {
+  padding: 6px 12px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--indigo);
+  color: var(--indigo);
+  background: transparent;
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.completeExBtn:hover {
+  background: var(--indigo);
+  color: white;
+}
+
+.completeExBtnActive {
+  border-color: var(--emerald);
+  color: var(--emerald);
+}
+
+.completeExBtnActive:hover {
+  background: var(--emerald);
+  color: white;
+}

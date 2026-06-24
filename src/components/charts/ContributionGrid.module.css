@@ -1,0 +1,284 @@
+.contributionGridWrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  gap: 16px;
+  background: var(--card);
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+/* Header */
+.heatmapHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.totalContributionsText {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.contributionSettingsLink {
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.contributionSettingsLink:hover {
+  color: var(--text-subtle);
+}
+
+/* Timeframe Toggles */
+.timeframeToggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.timeframeBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-subtle);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.timeframeBtn:hover {
+  color: var(--text);
+  background: var(--card-hover);
+}
+
+.timeframeBtnActive {
+  background: var(--card);
+  color: var(--indigo);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Grid Outer layout */
+.gridOuterContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  background: var(--bg-subtle);
+  box-sizing: border-box;
+}
+
+/* Unified Grid layout containing headers, axis labels and square cells */
+.unifiedGrid {
+  display: grid;
+  width: 100%;
+  gap: 3px 3px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.monthLabelGrid {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
+.yearLabelGrid {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--indigo);
+  display: flex;
+  align-items: center;
+  height: 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.dayLabelGrid {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 24px;
+  height: 11px;
+  box-sizing: border-box;
+}
+
+/* Square Cell styles */
+.squareCell {
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: 2px;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.squareCell:hover {
+  transform: scale(1.15);
+  filter: brightness(1.2);
+  outline: 1px solid var(--text-muted);
+}
+
+.squareSelected {
+  outline: 2px solid var(--indigo) !important;
+  transform: scale(1.2);
+}
+
+/* Colors level for squares (GitHub-Style Green Heatmap) */
+/* Dark Mode default coloring */
+.level0 { background-color: #161b22; }
+.level1 { background-color: #0e4429; }
+.level2 { background-color: #006d32; }
+.level3 { background-color: #26a641; }
+.level4 { background-color: #39d353; }
+
+/* Light Mode coloring override */
+:global([data-theme="light"]) .level0 { background-color: #ebedf0; }
+:global([data-theme="light"]) .level1 { background-color: #9be9a8; }
+:global([data-theme="light"]) .level2 { background-color: #40c463; }
+:global([data-theme="light"]) .level3 { background-color: #30a14e; }
+:global([data-theme="light"]) .level4 { background-color: #216e39; }
+
+/* Footer */
+.heatmapFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.footerLink {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.footerLink:hover {
+  color: var(--text-subtle);
+}
+
+.legendContainer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendLabel {
+  font-size: 11px;
+}
+
+.legendSquares {
+  display: flex;
+  gap: 3px;
+}
+
+.legendSquares .squareCell {
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  cursor: default;
+}
+
+.legendSquares .squareCell:hover {
+  transform: none;
+  outline: none;
+}
+
+/* Selected Overlay details */
+.cellDetailsOverlay {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--indigo-light);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--indigo);
+  animation: slideUp 0.3s ease;
+}
+
+.closeOverlayBtn {
+  background: transparent;
+  border: none;
+  color: var(--indigo);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.yearSelectorContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yearLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.yearSelect {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 28px 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-fast);
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(161,161,170,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+}
+
+.yearSelect:hover {
+  border-color: var(--text-muted);
+  background-color: var(--card-hover);
+}
+
+.yearSelect:focus {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}

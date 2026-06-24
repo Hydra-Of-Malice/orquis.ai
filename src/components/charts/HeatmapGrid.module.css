@@ -1,0 +1,52 @@
+.container {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.daysColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 98px;
+  padding-top: 2px;
+}
+
+.dayLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  height: 12px;
+  line-height: 12px;
+}
+
+.grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  height: 98px;
+}
+
+.cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background-color: var(--border);
+  transition: background-color var(--transition-fast);
+}
+
+.cell:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+/* Light / Dark Mode Levels */
+.level0 { background-color: var(--border); }
+
+/* In dark mode, levels are shades of indigo. In light mode, levels are shades of indigo as well. */
+.level1 { background-color: rgba(99, 102, 241, 0.25); }
+.level2 { background-color: rgba(99, 102, 241, 0.55); }
+.level3 { background-color: var(--indigo); }

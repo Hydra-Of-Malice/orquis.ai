@@ -1,0 +1,225 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-width);
+  height: 100%;
+  background: var(--bg-subtle);
+  border-right: 1px solid var(--border);
+  transition: width var(--transition-med);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.logoDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--indigo);
+  box-shadow: var(--shadow-glow);
+}
+
+.collapseBtn {
+  background: transparent;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.collapseBtn:hover {
+  background: var(--card-hover);
+  color: var(--text);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 8px;
+  gap: 16px;
+  flex: 1;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionTitle {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-subtle);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+
+.link:hover {
+  background: var(--card-hover);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.active {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--indigo);
+}
+
+.liveIndicatorContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.liveDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--red);
+  box-shadow: 0 0 6px var(--red);
+  animation: pulse 1.5s infinite;
+}
+
+.liveText {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.liveBadge {
+  font-size: 8px;
+  font-weight: 700;
+  background-color: var(--red-light);
+  color: var(--red);
+  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.02em;
+}
+
+.justifyBetweenWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.countBadge {
+  font-size: 10px;
+  font-weight: 600;
+  background-color: var(--card-hover);
+  color: var(--text-subtle);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+}
+
+.coachingIcon {
+  color: var(--purple);
+}
+
+.coachingLabel {
+  color: var(--text-subtle);
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 8px 80px 8px;
+  border-top: 1px solid var(--border);
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.themeToggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 12px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  color: var(--text-subtle);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.themeToggleBtn:hover {
+  background: var(--card-hover);
+  color: var(--text);
+}
+
+.settingsLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-subtle);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+
+.settingsLink:hover {
+  background: var(--card-hover);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.activeSettings {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--indigo);
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
