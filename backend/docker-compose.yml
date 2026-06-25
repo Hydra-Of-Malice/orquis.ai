@@ -38,7 +38,7 @@ services:
   # ── FastAPI Backend ─────────────────────────────────────────────────────────
   backend:
     build:
-      context: ./backend
+      context: ./api
       dockerfile: Dockerfile
     container_name: zapper-pm-backend
     restart: unless-stopped
@@ -92,7 +92,7 @@ services:
   # ── DB Migrations (one-shot) ───────────────────────────────────────────────
   migrate:
     build:
-      context: ./backend
+      context: ./api
       dockerfile: Dockerfile
     container_name: zapper-pm-migrate
     restart: "no"
@@ -196,7 +196,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./dist:/usr/share/nginx/html:ro
+      - ../frontend/dist:/usr/share/nginx/html:ro
     depends_on:
       - backend
     networks: [zapper-pm-net]
