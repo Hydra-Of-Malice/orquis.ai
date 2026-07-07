@@ -1,6 +1,8 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
+import { useQuery } from "@tanstack/react-query";
+import { meetingsApi } from "../../services/meetings";
 import styles from "./Sidebar.module.css";
 import {
   Home,
@@ -31,6 +33,14 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
   const { theme, toggleTheme } = useTheme();
+
+  const { data: rawMeetings = [] } = useQuery({
+    queryKey: ["sidebar-meetings"],
+    queryFn: () => meetingsApi.list({ limit: 100 }),
+    refetchInterval: 5000,
+  });
+
+  const recordingsCount = rawMeetings.filter((m: any) => m.status === "done").length;
 
   const toggleCollapsed = () => setCollapsed(!collapsed);
 
@@ -93,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
             {!collapsed && (
               <span className={styles.justifyBetweenWrapper}>
                 <span>Recordings</span>
-                <span className={styles.countBadge}>4</span>
+                {recordingsCount > 0 && <span className={styles.countBadge}>{recordingsCount}</span>}
               </span>
             )}
           </NavLink>

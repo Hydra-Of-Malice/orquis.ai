@@ -579,3 +579,252 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Full-screen Status Layouts (Joining, Lobby, Processing) */
+.statusContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  background: var(--bg);
+  padding: 40px 24px;
+}
+
+.statusCard {
+  width: 100%;
+  max-width: 540px;
+  background: var(--card-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 48px 40px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.statusIconWrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulsingCircle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--indigo-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--indigo);
+  position: relative;
+  z-index: 2;
+}
+
+.pulsingCircle.lobby {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+
+.pulsingCircle.processing {
+  background: var(--emerald-light);
+  color: var(--emerald);
+}
+
+.pulseRing {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--indigo);
+  opacity: 0;
+  animation: ripple 2s infinite ease-out;
+}
+
+.pulseRing.lobby {
+  border-color: var(--amber);
+}
+
+.pulseRing.processing {
+  border-color: var(--emerald);
+}
+
+.pulseRing:nth-child(2) {
+  animation-delay: 0.6s;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.statusTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.statusText {
+  font-size: 14px;
+  color: var(--text-subtle);
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.instructionBox {
+  width: 100%;
+  background: rgba(245, 158, 11, 0.05);
+  border: 1px dashed var(--amber);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.instructionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--amber-hover);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.instructionDesc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Processing Timeline */
+.pipelineTimeline {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  margin-top: 8px;
+}
+
+.pipelineStep {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stepIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 10px;
+}
+
+.stepIcon.completed {
+  background: var(--emerald-light);
+  color: var(--emerald);
+}
+
+.stepIcon.active {
+  background: var(--indigo-light);
+  color: var(--indigo);
+  animation: pulseStep 1.5s infinite ease-in-out;
+}
+
+.stepIcon.pending {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+@keyframes pulseStep {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.stepLabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.stepLabel.completed {
+  color: var(--text);
+}
+
+.stepLabel.active {
+  color: var(--indigo);
+  font-weight: 600;
+}
+
+.stepLabel.pending {
+  color: var(--text-muted);
+}
+
+/* Active Participants List in Sidebar */
+.participantsSection {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.participantsSection h4 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+}
+
+.participantsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.participantRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-subtle);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.participantName {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-subtle);
+  flex: 1;
+}
+
+.speakingBadge {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--emerald);
+  text-transform: uppercase;
+  background: var(--emerald-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  animation: pulseStep 1.5s infinite ease-in-out;
+}

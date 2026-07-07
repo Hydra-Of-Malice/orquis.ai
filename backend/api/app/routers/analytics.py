@@ -88,6 +88,63 @@ async def analytics_overview(
                         "detail": topic.get("detail", "")[:100],
                     })
 
+    # Calculate MoM Deltas
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    sixty_days_ago = now - timedelta(days=60)
+
+    # 1. Meetings count deltas
+    this_month_meetings_r = await db.execute(
+        select(func.count()).where(
+            Meeting.org_id == org_id,
+            Meeting.status == "done",
+            Meeting.started_at >= thirty_days_ago
+        )
+    )
+    this_month_meetings = this_month_meetings_r.scalar() or 0
+
+    last_month_meetings_r = await db.execute(
+        select(func.count()).where(
+            Meeting.org_id == org_id,
+            Meeting.status == "done",
+            Meeting.started_at >= sixty_days_ago,
+            Meeting.started_at < thirty_days_ago
+        )
+    )
+    last_month_meetings = last_month_meetings_r.scalar() or 0
+
+    if last_month_meetings == 0:
+        total_meetings_delta = 100 if this_month_meetings > 0 else 0
+    else:
+        total_meetings_delta = round(((this_month_meetings - last_month_meetings) / last_month_meetings) * 100)
+
+    # 2. Meeting duration (hours) deltas
+    this_month_duration_r = await db.execute(
+        select(func.sum(Meeting.duration_seconds)).where(
+            Meeting.org_id == org_id,
+            Meeting.status == "done",
+            Meeting.started_at >= thirty_days_ago,
+            Meeting.duration_seconds.isnot(None)
+        )
+    )
+    this_month_duration = (this_month_duration_r.scalar() or 0) / 3600
+
+    last_month_duration_r = await db.execute(
+        select(func.sum(Meeting.duration_seconds)).where(
+            Meeting.org_id == org_id,
+            Meeting.status == "done",
+            Meeting.started_at >= sixty_days_ago,
+            Meeting.started_at < thirty_days_ago,
+            Meeting.duration_seconds.isnot(None)
+        )
+    )
+    last_month_duration = (last_month_duration_r.scalar() or 0) / 3600
+
+    if last_month_duration == 0:
+        total_hours_delta = 100 if this_month_duration > 0 else 0
+    else:
+        total_hours_delta = round(((this_month_duration - last_month_duration) / last_month_duration) * 100)
+
     return {
         "total_meetings": total_meetings,
         "meetings_this_week": meetings_this_week,
@@ -97,6 +154,8 @@ async def analytics_overview(
         "avg_health_score": avg_health,
         "avg_meeting_duration_mins": round(avg_duration / 60) if avg_duration else 0,
         "recent_insights": insights[:6],
+        "total_meetings_delta": total_meetings_delta,
+        "total_hours_delta": total_hours_delta,
     }
 
 

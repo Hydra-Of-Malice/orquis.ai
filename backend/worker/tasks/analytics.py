@@ -106,7 +106,7 @@ def compute_analytics(meeting_id: str, segments: list[dict], summary: dict):
                      decisions_count, questions_count, word_count)
                 VALUES
                     (gen_random_uuid(), :meeting_id, :engagement, :health, :sentiment_score,
-                     :sentiment_timeline::jsonb, :talk_time::jsonb,
+                     CAST(:sentiment_timeline AS jsonb), CAST(:talk_time AS jsonb),
                      :decisions, :questions, :words)
                 ON CONFLICT (meeting_id)
                 DO UPDATE SET

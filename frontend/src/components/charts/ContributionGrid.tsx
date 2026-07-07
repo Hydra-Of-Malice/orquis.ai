@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
 import styles from "./ContributionGrid.module.css";
 import clsx from "clsx";
+import { useQuery } from '@tanstack/react-query';
+import meetingsApi from '../../services/meetings';
 
 interface ContributionGridProps {
   defaultTimeframe?: string;
@@ -17,63 +19,80 @@ export const ContributionGrid: React.FC<ContributionGridProps> = () => {
   const [selectedCell, setSelectedCell] = useState<GridCell | null>(null);
   const [year, setYear] = useState<number>(2026);
 
+  const { data: meetings = [] } = useQuery({
+    queryKey: ['meetings-year', year],
+    queryFn: () => meetingsApi.list({ 
+      from_date: `${year}-01-01T00:00:00Z`, 
+      to_date: `${year}-12-31T23:59:59Z`, 
+      limit: 1000 
+    }),
+  });
+
   const config = useMemo(() => {
-    const contributionsMap: Record<number, number> = {
-      2026: 842,
-      2025: 718,
-      2024: 593,
-    };
     return {
       cols: 53, // Single year columns
       rows: 7,
-      totalContributions: contributionsMap[year] || 842,
-      label: `contributions in ${year}`,
+      totalContributions: meetings.length,
+      label: `meetings in ${year}`,
       days: ["", "Mon", "", "Wed", "", "Fri", ""],
     };
-  }, [year]);
+  }, [year, meetings.length]);
 
-  // Generate grid cells dynamically with randomized seed data based on selected year
-  const gridCells = useMemo(() => {
-    const totalCells = config.cols * config.rows;
+  const { gridCells, monthPositions } = useMemo(() => {
     const cells: GridCell[] = [];
+    const countMap: Record<string, number> = {};
+    
+    meetings.forEach((m: any) => {
+      if (m.created_at) {
+        const d = new Date(m.created_at).toISOString().split('T')[0];
+        countMap[d] = (countMap[d] || 0) + 1;
+      }
+    });
 
-    // Simple deterministic randomizer based on idx and year
-    const getRandomLevel = (idx: number): 0 | 1 | 2 | 3 | 4 => {
-      const seed = Math.sin(idx + (year - 2010)) * 10000;
-      const val = seed - Math.floor(seed);
-      if (val > 0.9) return 4;
-      if (val > 0.72) return 3;
-      if (val > 0.5) return 2;
-      if (val > 0.25) return 1;
-      return 0;
-    };
+    const yearStart = new Date(`${year}-01-01T12:00:00`);
+    const dayOfWeek = yearStart.getDay(); // 0 is Sunday
+    const startDate = new Date(yearStart);
+    startDate.setDate(yearStart.getDate() - dayOfWeek);
 
-    for (let i = 0; i < totalCells; i++) {
-      const level = getRandomLevel(i);
-      const count = level === 0 ? 0 : level === 1 ? Math.floor(1 + Math.random() * 2) : level === 2 ? Math.floor(3 + Math.random() * 2) : level === 3 ? Math.floor(5 + Math.random() * 3) : Math.floor(8 + Math.random() * 4);
-      cells.push({
-        id: i,
-        level,
-        count,
-      });
+    const computedMonthPositions = [];
+    let lastMonth = -1;
+
+    for (let c = 0; c < config.cols; c++) {
+      const colDate = new Date(startDate);
+      colDate.setDate(startDate.getDate() + c * 7);
+      const currentMonth = colDate.getMonth();
+      if (currentMonth !== lastMonth && colDate.getFullYear() === year) {
+        computedMonthPositions.push({ name: colDate.toLocaleString('default', { month: 'short' }), col: c + 1 });
+        lastMonth = currentMonth;
+      }
     }
-    return cells;
-  }, [config, year]);
 
-  const monthPositions = [
-    { name: "Jun", col: 1 },
-    { name: "Jul", col: 5 },
-    { name: "Aug", col: 10 },
-    { name: "Sep", col: 14 },
-    { name: "Oct", col: 18 },
-    { name: "Nov", col: 23 },
-    { name: "Dec", col: 27 },
-    { name: "Jan", col: 31 },
-    { name: "Feb", col: 36 },
-    { name: "Mar", col: 40 },
-    { name: "Apr", col: 45 },
-    { name: "May", col: 49 },
-  ];
+    // Cells are rendered row by row (all Sun, all Mon, etc)
+    for (let r = 0; r < 7; r++) {
+      for (let c = 0; c < config.cols; c++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + c * 7 + r);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Hide dates outside the year for a cleaner look if desired, but standard graphs show them.
+        const count = countMap[dateStr] || 0;
+        let level: 0 | 1 | 2 | 3 | 4 = 0;
+        if (count >= 4) level = 4;
+        else if (count === 3) level = 3;
+        else if (count === 2) level = 2;
+        else if (count === 1) level = 1;
+
+        cells.push({
+          id: r * config.cols + c,
+          level,
+          dateStr,
+          count,
+        });
+      }
+    }
+
+    return { gridCells: cells, monthPositions: computedMonthPositions };
+  }, [year, meetings, config.cols]);
 
   const startRowOffset = 2;
 
@@ -155,7 +174,7 @@ export const ContributionGrid: React.FC<ContributionGridProps> = () => {
                   selectedCell?.id === cell.id && styles.squareSelected
                 )}
                 style={{ gridColumnStart: col, gridRowStart: row }}
-                title={`${cell.count === 0 ? "No" : cell.count} contributions`}
+                title={`${cell.dateStr}: ${cell.count === 0 ? "No" : cell.count} meetings`}
                 onClick={() => setSelectedCell(cell)}
               />
             );
@@ -186,7 +205,7 @@ export const ContributionGrid: React.FC<ContributionGridProps> = () => {
       {selectedCell && (
         <div className={styles.cellDetailsOverlay}>
           <span>
-            Selected cell: <strong>{selectedCell.count} meetings/contributions</strong> recorded. Activity level: Level {selectedCell.level}/4.
+            Selected date (<strong>{selectedCell.dateStr}</strong>): <strong>{selectedCell.count} meetings</strong> recorded. Activity level: Level {selectedCell.level}/4.
           </span>
           <button className={styles.closeOverlayBtn} onClick={() => setSelectedCell(null)}>
             ✕

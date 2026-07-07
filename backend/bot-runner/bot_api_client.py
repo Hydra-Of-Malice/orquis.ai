@@ -29,18 +29,20 @@ class BotAPIClient:
     async def update_participants(self, participant_names: list[str]):
         try:
             async with httpx.AsyncClient(timeout=5) as c:
-                await c.patch(
+                r = await c.patch(
                     f"{self._base}/meetings/{self.recording_id}/participants",
                     json={"participant_names": participant_names},
                 )
-        except Exception:
-            pass
+                if r.status_code != 200:
+                    print(f"[bot_api] update_participants failed status={r.status_code}: {r.text}", flush=True)
+        except Exception as e:
+            print(f"[bot_api] update_participants error: {e}", flush=True)
 
     async def rename_speaker(self, old_name: str, new_name: str):
         try:
             async with httpx.AsyncClient(timeout=10) as c:
                 await c.patch(
-                    f"{self._base}/meetings/{self.recording_id}/transcript/speaker",
+                    f"{self._base}/bot/meetings/{self.recording_id}/transcript/speaker",
                     json={"old_name": old_name, "new_name": new_name},
                 )
         except Exception:
@@ -51,6 +53,7 @@ class BotAPIClient:
         wav_path: str,
         participant_names: list[str],
         audio_size_bytes: int = None,
+        duration_seconds: int = None,
     ):
         payload = {
             "wav_path": wav_path,
@@ -59,6 +62,8 @@ class BotAPIClient:
         }
         if audio_size_bytes is not None:
             payload["audio_size_bytes"] = audio_size_bytes
+        if duration_seconds is not None:
+            payload["duration_seconds"] = duration_seconds
 
         try:
             async with httpx.AsyncClient(timeout=30) as c:
@@ -72,7 +77,7 @@ class BotAPIClient:
     async def is_muted(self) -> bool:
         try:
             async with httpx.AsyncClient(timeout=5) as c:
-                r = await c.get(f"{self._base}/meetings/{self.recording_id}")
+                r = await c.get(f"{self._base}/bot/meetings/{self.recording_id}")
                 return r.json().get("zapper_muted", False)
         except Exception:
             return False
@@ -80,7 +85,7 @@ class BotAPIClient:
     async def is_cancelled(self) -> bool:
         try:
             async with httpx.AsyncClient(timeout=5) as c:
-                r = await c.get(f"{self._base}/meetings/{self.recording_id}")
+                r = await c.get(f"{self._base}/bot/meetings/{self.recording_id}")
                 status = r.json().get("status")
                 return status not in ("joining", "lobby", "recording")
         except Exception:
@@ -93,7 +98,7 @@ class BotAPIClient:
     async def get_participants(self) -> list[str]:
         try:
             async with httpx.AsyncClient(timeout=5) as c:
-                r = await c.get(f"{self._base}/meetings/{self.recording_id}")
+                r = await c.get(f"{self._base}/bot/meetings/{self.recording_id}")
                 return r.json().get("participant_names", [])
         except Exception:
             return []
@@ -101,7 +106,7 @@ class BotAPIClient:
     async def get_meeting_context(self) -> dict:
         try:
             async with httpx.AsyncClient(timeout=10) as c:
-                r = await c.get(f"{self._base}/meetings/{self.recording_id}")
+                r = await c.get(f"{self._base}/bot/meetings/{self.recording_id}")
                 data = r.json()
                 return {
                     "meeting_id": data.get("id"),

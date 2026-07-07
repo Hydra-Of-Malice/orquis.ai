@@ -71,6 +71,7 @@ def run_post_meeting_pipeline(self, meeting_id: str):
 
         if not segments:
             _update_status(meeting_id, "done")
+            _publish_ws_event(meeting_id, "done")
             print(f"[pipeline] No segments — marking done for {meeting_id}", flush=True)
             return
 

@@ -176,12 +176,12 @@ export const Analytics: React.FC = () => {
                 <div className={styles.radarContainer}>
                   <RadarChart
                     data={[
-                      { subject: "Engagement", value: 88, fullMark: 100 },
-                      { subject: "Speaking Balance", value: 75, fullMark: 100 },
-                      { subject: "Topic Focus", value: 92, fullMark: 100 },
-                      { subject: "Decision Lock", value: 84, fullMark: 100 },
-                      { subject: "Sentiment", value: 86, fullMark: 100 },
-                      { subject: "Punctuality", value: 95, fullMark: 100 },
+                      { subject: "Engagement",   value: 88, fullMark: 100 },
+                      { subject: "Spk. Balance", value: 75, fullMark: 100 },
+                      { subject: "Topic Focus",  value: 92, fullMark: 100 },
+                      { subject: "Decision",     value: 84, fullMark: 100 },
+                      { subject: "Sentiment",    value: 86, fullMark: 100 },
+                      { subject: "Punctuality",  value: 95, fullMark: 100 },
                     ]}
                   />
                 </div>

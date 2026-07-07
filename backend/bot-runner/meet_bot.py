@@ -81,7 +81,11 @@ _JS_AUDIO_INTERCEPTOR = r"""
         }
 
         // Skip placeholder / bot / generic UI names.
-        if (/^(zapper|recorder|bot|you|\(you\)|user profile picture|avatar|photo|unknown\s*\d*|aditya\s*arnav)$/i.test(name)) return;
+        // NOTE: do NOT hardcode real account names (e.g. "aditya arnav") here —
+        // the Python _receive_track_name callback filters bot account names dynamically.
+        // A hardcoded name here would silently block a real participant from ever
+        // having their audio track attributed to their name.
+        if (/^(zapper|recorder|bot|you|\(you\)|user profile picture|avatar|photo|unknown\s*\d*)$/i.test(name)) return;
         
         // Skip brand / product / logo names — Google Meet puts "Meet logo" as
         // img alt text and it leaks through DOM walks.
@@ -322,6 +326,28 @@ _JS_AUDIO_INTERCEPTOR = r"""
                     } catch (e) {}
                 }
 
+                // ── Strategy 5: MediaStream ID correlation ───────────────────────
+                if (window._zTrackToStreams) {
+                    Object.keys(window._zRtcToZapper).forEach(function (rtcTrackId) {
+                        var zapperId = window._zRtcToZapper[rtcTrackId];
+                        if (!zapperId) return;
+
+                        var streamIds = window._zTrackToStreams[rtcTrackId];
+                        if (!streamIds || streamIds.length === 0) return;
+
+                        document.querySelectorAll(tileSelectors).forEach(function (tile) {
+                            var name = _extractName(tile);
+                            if (!name) return;
+
+                            tile.querySelectorAll('video').forEach(function (videoEl) {
+                                if (videoEl.srcObject && streamIds.indexOf(videoEl.srcObject.id) !== -1) {
+                                    _reportTrackName(zapperId, name);
+                                }
+                            });
+                        });
+                    });
+                }
+
             } catch (e) {}
         }
 
@@ -393,7 +419,17 @@ _JS_AUDIO_INTERCEPTOR = r"""
             }
         });
         pc.addEventListener('track', function (evt) {
-            if (!evt.track || evt.track.kind !== 'audio') return;
+            if (!evt.track) return;
+            if (evt.streams && evt.streams.length > 0) {
+                window._zTrackToStreams = window._zTrackToStreams || {};
+                evt.streams.forEach(function (stream) {
+                    window._zTrackToStreams[evt.track.id] = window._zTrackToStreams[evt.track.id] || [];
+                    if (window._zTrackToStreams[evt.track.id].indexOf(stream.id) === -1) {
+                        window._zTrackToStreams[evt.track.id].push(stream.id);
+                    }
+                });
+            }
+            if (evt.track.kind !== 'audio') return;
             _tapReceiver(evt.receiver, evt.track.label || '');
         });
         _startNamePoller();
@@ -402,6 +438,18 @@ _JS_AUDIO_INTERCEPTOR = r"""
         try {
             const _poll = setInterval(function () {
                 try {
+                    // Update track -> stream mapping from remote streams
+                    if (typeof pc.getRemoteStreams === 'function') {
+                        pc.getRemoteStreams().forEach(function (stream) {
+                            stream.getTracks().forEach(function (track) {
+                                window._zTrackToStreams = window._zTrackToStreams || {};
+                                window._zTrackToStreams[track.id] = window._zTrackToStreams[track.id] || [];
+                                if (window._zTrackToStreams[track.id].indexOf(stream.id) === -1) {
+                                    window._zTrackToStreams[track.id].push(stream.id);
+                                }
+                            });
+                        });
+                    }
                     const recs = pc.getReceivers ? pc.getReceivers() : [];
                     for (const r of recs) {
                         if (r && r.track && r.track.kind === 'audio') {
@@ -528,8 +576,8 @@ class MeetBot:
         self._participants_seen: set[str] = set()
         # Track the bot's own Google-account display name (may differ from
         # BOT_DISPLAY_NAME, e.g. "Aditya Arnav" vs "Zapper Recorder").
-        # Populated when we detect 'More options for <name>' in the DOM.
         self._bot_account_names: set[str] = set()
+        self.self_name: str = ""
         self.slot = slot
         self.settings = settings or {}
         self.env: BotEnvironment = create_bot_environment(slot)
@@ -577,13 +625,21 @@ class MeetBot:
 
     async def _on_scraper_participants(self, names: list[str], participant_first_seen: dict = None):
         bot_env_name = self.bot_display_name.strip().lower()
+        # self_lower tracks the bot's Google-account display name (e.g. "aditya arnav")
+        # which may differ from bot_env_name ("zapper recorder").  We take the first
+        # name in _bot_account_names as the best proxy, or fall back to empty string.
+        self_lower = self.self_name.lower()
         updated = False
         for n in names:
             n_clean = n.strip()
             if not n_clean:
                 continue
             nl = n_clean.lower()
-            if nl == bot_env_name or (self_lower and nl == self_lower):
+            if (
+                nl == bot_env_name
+                or (self_lower and nl == self_lower)
+                or nl in {ban.lower() for ban in self._bot_account_names}
+            ):
                 continue
             if nl in {"you", "(you)"}:
                 continue
@@ -591,20 +647,6 @@ class MeetBot:
             # aria-labels) that pass the DOM extraction but are not names.
             if _is_meet_ui_string(n_clean):
                 print(f"[meet-bot] Skipping UI string (not a participant): {n_clean!r}", file=sys.stderr)
-                # Extract the Google account name from 'More options for <name>'
-                # so we can block it from being attributed as a speaker.
-                import re as _re_more
-                _mo = _re_more.match(r'^More options for (.+)$', n_clean, _re_more.I)
-                if _mo:
-                    _acct = _mo.group(1).strip()
-                    if _acct and _acct.lower() not in {bot_env_name, self_lower}:
-                        # This is the bot's Google-account name.
-                        if _acct not in self._bot_account_names:
-                            self._bot_account_names.add(_acct)
-                            print(
-                                f"[meet-bot] Detected bot Google-account name: '{_acct}'",
-                                file=sys.stderr,
-                            )
                 continue
             if n_clean not in self._participants_seen:
                 self._participants_seen.add(n_clean)
@@ -722,16 +764,40 @@ class MeetBot:
                 if name != "Speaker" and self.participants and name not in self.participants:
                     print(f"[meet-bot DEBUG] Track name {name!r} is not a known participant — demoting to 'Speaker'", file=sys.stderr)
                     name = "Speaker"
-                # If the JS track→DOM name poller hasn't resolved a name yet
-                # (returns the generic fallback) BUT we already know who is in
-                # the meeting from the DOM participant scan, use that name.
-                # This covers the common case where audio track IDs can't be
-                # correlated to DOM tiles in Google Meet's headless layout:
-                #   • exactly 1 known participant → must be them speaking
-                if name == "Speaker" and len(self.participants) == 1:
-                    print(f"[meet-bot DEBUG] Fallback activated: using {self.participants[0]!r}", file=sys.stderr)
+                # If DOM name poller successfully resolved a known participant, return it.
+                if name != "Speaker":
+                    return name
+                # Fallback 1: exactly 1 known participant → must be them speaking.
+                if len(self.participants) == 1:
+                    print(f"[meet-bot DEBUG] Fallback 1 activated: using {self.participants[0]!r}", file=sys.stderr)
                     return self.participants[0]
-                return name
+                # Fallback 2: temporal correlation — find the most-active track in the
+                # last 10 s window and map it to a participant by first-active-time
+                # ordering.  This handles the very common Google Meet headless case
+                # where the JS DOM name poller cannot correlate WebRTC track IDs to
+                # participant tiles (Meet's SFU doesn't expose an <audio srcObject>
+                # for remote tracks in headless Xvfb mode).
+                if self.participants and track_first_active:
+                    import time as _t
+                    _now = _t.time()
+                    _cutoff = _now - 10.0
+                    _best_track = None
+                    _max_frames = 0
+                    for _tid in list(track_activity_map.keys()):
+                        _recent = sum(1 for _ts in track_activity_map.get(_tid, []) if _ts >= _cutoff)
+                        if _recent > _max_frames:
+                            _max_frames = _recent
+                            _best_track = _tid
+                    if _best_track and _max_frames > 2:
+                        corr_name = _temporal_correlate_track(_best_track)
+                        if corr_name:
+                            print(
+                                f"[meet-bot DEBUG] Fallback 2 (temporal): "
+                                f"{_best_track} → {corr_name!r}",
+                                file=sys.stderr,
+                            )
+                            return corr_name
+                return "Speaker"
 
             def _temporal_correlate_track(track_id: str) -> str:
                 """Map a track_id to a participant name using temporal ordering.
@@ -767,6 +833,11 @@ class MeetBot:
                     for n in pts
                 ]
                 named_times.sort(key=lambda x: x[0])
+
+                if len(known_times) != len(named_times):
+                    # Counts mismatch (e.g. some tracks are muted or haven't spoken).
+                    # Avoid guessing to prevent wrong speaker attribution.
+                    return ""
 
                 corr_map = {
                     tid: name
@@ -882,7 +953,13 @@ class MeetBot:
                                     # Priority 1: JS DOM-correlated name (most reliable).
                                     name = track_name_map.get(_t, "")
                                     if name:
-                                        return name
+                                        # If the resolved name is NOT a known participant (e.g. it resolved
+                                        # to the bot's own Google account name like 'Aditya Arnav' which is
+                                        # excluded from self.participants), treat it as the generic fallback.
+                                        if self.participants and name not in self.participants:
+                                            pass
+                                        else:
+                                            return name
                                     # Priority 2: Temporal correlation — sort tracks and
                                     # participants by first-seen time and assign by rank.
                                     # Far more reliable than the old index heuristic.
@@ -993,10 +1070,10 @@ class MeetBot:
 
             page = await ctx.new_page()
 
-            # Forward browser console messages so we can see '[zapper]' logs
+            # Forward browser console messages so we can see all logs
             page.on("console", lambda msg: print(
                 f"[browser] {msg.type}: {msg.text}", file=sys.stderr
-            ) if "[zapper]" in msg.text else None)
+            ))
 
             # Inject the bot's display name into the page so the JS name poller
             # can skip the bot's own participant tile without a Python round-trip.
@@ -1100,7 +1177,7 @@ class MeetBot:
 
             # Wait for the meeting to end (returns or raises)
             try:
-                await self._watch_for_end(page, participant_first_seen=participant_first_seen)
+                await self._watch_for_end(page, participant_first_seen=participant_first_seen, track_name_map=track_name_map)
                 print("[meet-bot] Meeting ended — stopping recording", file=sys.stderr)
             except Exception as e:
                 print(f"[meet-bot] Watch-for-end exited: {e}", file=sys.stderr)
@@ -1566,17 +1643,7 @@ class MeetBot:
                 except Exception:
                     pass
 
-            # 4. "Ask to join" button disappeared = we got in (or kicked)
-            try:
-                ask = page.locator("button:has-text('Ask to join')").first
-                still_asking = await ask.is_visible(timeout=1_000)
-                if not still_asking:
-                    # Double-check we're on the meet URL (not an error page)
-                    if "meet.google.com" in page.url:
-                        print(f"[meet-bot] Admitted — 'Ask to join' gone; URL={page.url}", file=sys.stderr)
-                        return
-            except Exception:
-                pass
+
 
             # 5. URL-based heuristics (pli=1 is set immediately so skip it)
             url = page.url
@@ -1631,7 +1698,7 @@ class MeetBot:
 
     # ─── Meeting end detection ─────────────────────────────────────────────
 
-    async def _watch_for_end(self, page: Page, participant_first_seen: dict | None = None):
+    async def _watch_for_end(self, page: Page, participant_first_seen: dict | None = None, track_name_map: dict | None = None):
         end_texts = [
             "You've left the meeting",
             "The meeting has ended",
@@ -1809,7 +1876,7 @@ class MeetBot:
                         // Strategy B: data-self-name attribute (you / bot)
                         document.querySelectorAll('[data-self-name]').forEach(el => {
                             const n = cleanName(el.getAttribute('data-self-name'));
-                            if (n) names.add(n);
+                            if (n) selfName = n;
                         });
                         // Strategy C: people panel list items.
                         // IMPORTANT: scope to the people-panel container so we
@@ -1889,16 +1956,24 @@ class MeetBot:
                 self_name = (info.get("self") or "").strip() if isinstance(info, dict) else ""
                 if participant_count > 0:
                     max_count_seen = max(max_count_seen, participant_count)
+                if self_name:
+                    self.self_name = self_name
+                    if self_name not in self._bot_account_names:
+                        self._bot_account_names.add(self_name)
 
                 # Track participant names seen during the meeting (excluding the bot itself).
                 bot_env_name = self.bot_display_name.strip().lower()
-                self_lower = self_name.lower()
+                self_lower = self.self_name.lower()
                 for n in names:
                     n_clean = n.strip()
                     if not n_clean:
                         continue
                     nl = n_clean.lower()
-                    if nl == bot_env_name or (self_lower and nl == self_lower):
+                    if (
+                        nl == bot_env_name
+                        or (self_lower and nl == self_lower)
+                        or nl in {ban.lower() for ban in self._bot_account_names}
+                    ):
                         continue
                     if nl in {"you", "(you)"}:
                         continue
@@ -1922,6 +1997,26 @@ class MeetBot:
                         await self.api.update_participants(self.participants)
                         if len(self.participants) == 1:
                             await self.api.rename_speaker("Speaker", self.participants[0])
+
+                # Dynamically purge any detected bot account names from the participants list to handle race conditions
+                _bad_names = {bot_env_name}
+                if self_lower:
+                    _bad_names.add(self_lower)
+                for ban in self._bot_account_names:
+                    _bad_names.add(ban.lower())
+                
+                purged = [p for p in self.participants if p.lower() not in _bad_names]
+                if len(purged) != len(self.participants):
+                    self.participants = purged
+                    await self.api.update_participants(self.participants)
+                    print(f"[meet-bot] Purged bot name from self.participants. Remaining: {self.participants}", file=sys.stderr)
+
+                # Also clean up track_name_map
+                if track_name_map is not None:
+                    for tid, tname in list(track_name_map.items()):
+                        if tname.lower() in _bad_names:
+                            del track_name_map[tid]
+                            print(f"[meet-bot] Purged bot track mapping: {tid} -> '{tname}'", file=sys.stderr)
 
                 now = time.time()
                 in_meeting_for = now - admitted_at

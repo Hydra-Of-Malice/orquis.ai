@@ -187,7 +187,7 @@ def _save_track_metadata(meeting_id: str, track_meta: dict, segments: list[dict]
                          confidence, embedding, duration_ms, source, created_at)
                     VALUES
                         (gen_random_uuid(), :meeting_id, :track_label, :name,
-                         :profile_id, :confidence, :embedding::jsonb,
+                         :profile_id, :confidence, CAST(:embedding AS jsonb),
                          :duration_ms, :source, now())
                 """),
                 {
@@ -229,7 +229,7 @@ def _update_matched_profiles(track_meta: dict):
                 session.execute(
                     text("""
                         UPDATE speaker_profiles
-                        SET embedding = :emb::jsonb,
+                        SET embedding = CAST(:emb AS jsonb),
                             sample_count = :count,
                             last_seen_at = now()
                         WHERE id = :id

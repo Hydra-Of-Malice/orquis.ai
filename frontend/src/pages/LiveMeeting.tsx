@@ -44,6 +44,7 @@ export const LiveMeeting: React.FC = () => {
     queryKey: ["meeting", id],
     queryFn: () => meetingsApi.get(id!),
     enabled: !!id,
+    refetchInterval: 5000,
   });
 
   const stopBotMutation = useMutation({
@@ -83,67 +84,90 @@ export const LiveMeeting: React.FC = () => {
   };
 
   // Live state
-  const [elapsed, setElapsed] = useState(2061); // Start at 34m 21s
-  const [activeSpeaker, setActiveSpeaker] = useState("Rahul Patel");
-  const [monologueTimer, setMonologueTimer] = useState(195); // 3m 15s speak monologue
+  const [meetingStatus, setMeetingStatus] = useState<string>("joining");
+  const [pipelineStep, setPipelineStep] = useState<"transcribing" | "summarising" | "finalising" | "done">("transcribing");
+  const [elapsed, setElapsed] = useState(0); 
+  const [activeSpeaker, setActiveSpeaker] = useState("");
+  const [monologueTimer, setMonologueTimer] = useState(0);
+
+  useEffect(() => {
+    if (id === "mock") {
+      setMeetingStatus("recording");
+    } else if (dbMeeting?.status) {
+      setMeetingStatus(dbMeeting.status);
+      if (dbMeeting.status === "done" && pipelineStep !== "done") {
+        setPipelineStep("done");
+        setTimeout(() => navigate(`/meetings/${id}`), 1500);
+      }
+    }
+  }, [dbMeeting, id, navigate, pipelineStep]);
 
   useWebSocket({
     meetingId: id || "",
     enabled: !!id && id !== "mock",
-    onEvent: (event: LiveEvent) => {
-      if (event.type === "transcript_segment") {
-        const timeStr = formatElapsed(Math.floor(event.segment.start_ms / 1000));
+    onEvent: (event: any) => {
+      if (event.type === "transcript_segment" || event.type === "segment") {
+        const segmentData = event.segment || event.payload;
+        if (!segmentData) return;
+
+        const timeStr = formatElapsed(Math.floor((segmentData.start_ms || 0) / 1000));
+        const speaker = segmentData.speaker_name || segmentData.speaker || "Speaker";
+
         setLiveTranscript((prev) => [
           ...prev,
           {
-            speaker: event.segment.speaker_name,
-            text: event.segment.text,
+            speaker: speaker,
+            text: segmentData.text || "",
             time: timeStr,
           },
         ]);
         setActiveSpeaker((current) => {
-          if (current !== event.segment.speaker_name) {
+          if (current !== speaker) {
             setMonologueTimer(0);
           }
-          return event.segment.speaker_name;
+          return speaker;
+        });
+        setTalkTimes((prev) => {
+          if (!prev[speaker]) {
+            return { ...prev, [speaker]: 0 };
+          }
+          return prev;
         });
       } else if (event.type === "status_change") {
-        if (event.status === "done" || event.status === "error") {
+        setMeetingStatus(event.status);
+        if (event.status === "done") {
+          setPipelineStep("done");
+          setTimeout(() => navigate(`/meetings/${id}`), 1500);
+        } else if (event.status === "error") {
           navigate(`/meetings/${id}`);
         }
+      } else if (event.type === "pipeline_started" as any) {
+        setMeetingStatus("processing");
+        setPipelineStep("transcribing");
+      } else if (event.type === "transcribed" as any) {
+        setPipelineStep("summarising");
+      } else if (event.type === "summarised" as any) {
+        setPipelineStep("finalising");
+      } else if (event.type === "done" as any) {
+        setMeetingStatus("done");
+        setPipelineStep("done");
+        setTimeout(() => navigate(`/meetings/${id}`), 1500);
+      } else if (event.type === "error" as any) {
+        navigate(`/meetings/${id}`);
       }
     },
   });
 
-  const [liveTranscript, setLiveTranscript] = useState<{ speaker: string; text: string; time: string; lowConfidence?: boolean }[]>([
-    { speaker: "Rahul Patel", text: "So, the first milestone is styling tokens. Let's make sure the dark background matches Notion dark, and our accent is a vibrant indigo.", time: "34:02" },
-    { speaker: "Mia Wong", text: "Agreed. I think Geist is the best secondary font for readability in data tables. It looks clean and modern.", time: "34:15" },
-  ]);
+  const [liveTranscript, setLiveTranscript] = useState<{ speaker: string; text: string; time: string; lowConfidence?: boolean }[]>([]);
 
-  const [aiNotes, setAiNotes] = useState<{ id: string; text: string; isSaved?: boolean }[]>([
-    { id: "note_1", text: "Confirmed Indigo (#6366F1) as primary theme accent color." },
-    { id: "note_2", text: "Decided on Geist Mono/Sans as secondary typography font family." },
-  ]);
+  const [aiNotes, setAiNotes] = useState<{ id: string; text: string; isSaved?: boolean }[]>([]);
 
-  const [liveActions, setLiveActions] = useState<{ id: string; text: string; isSaved?: boolean }[]>([
-    { id: "act_1", text: "Export design styling tokens in CSS variables format." },
-    { id: "act_2", text: "Create fallback SVG icons for all Zoom/Meet/Teams badges." },
-  ]);
+  const [liveActions, setLiveActions] = useState<{ id: string; text: string; isSaved?: boolean }[]>([]);
 
-  const [talkTimes, setTalkTimes] = useState<Record<string, number>>({
-    "Rahul Patel": 1133,
-    "Mia Wong": 618,
-    "Jay Shah": 310,
-  });
+  const [talkTimes, setTalkTimes] = useState<Record<string, number>>({});
 
   // Sentiment real-time updating data
-  const [liveSentiment, setLiveSentiment] = useState<{ name: string; value: number }[]>([
-    { name: "0s", value: 75 },
-    { name: "5s", value: 78 },
-    { name: "10s", value: 82 },
-    { name: "15s", value: 80 },
-    { name: "20s", value: 85 },
-  ]);
+  const [liveSentiment, setLiveSentiment] = useState<{ name: string; value: number }[]>([]);
 
   const [chatInput, setChatInput] = useState("");
   const [liveChat, setLiveChat] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
@@ -162,67 +186,29 @@ export const LiveMeeting: React.FC = () => {
 
   // Time Tick
   useEffect(() => {
-    if (id && id !== "mock") return;
     const timer = setInterval(() => {
       setElapsed((prev) => prev + 1);
       setMonologueTimer((prev) => prev + 1);
       
-      // Random talk time increment
-      const speakers = Object.keys(talkTimes);
-      const active = activeSpeaker;
-      setTalkTimes((prev) => ({
-        ...prev,
-        [active]: prev[active] + 1,
-      }));
+      // Dynamic talk time increment based on active speaker
+      setActiveSpeaker((active) => {
+        if (active) {
+          setTalkTimes((prev) => ({
+            ...prev,
+            [active]: (prev[active] || 0) + 1,
+          }));
+        }
+        return active;
+      });
     }, 1000);
     return () => clearInterval(timer);
-  }, [talkTimes, activeSpeaker, id]);
+  }, []);
 
-  // Dialogue Injector Simulation
   useEffect(() => {
-    if (id && id !== "mock") return;
-    const injector = setInterval(() => {
-      if (dialogueIndex.current < dialoguePool.length) {
-        const nextLine = dialoguePool[dialogueIndex.current];
-        const minutes = Math.floor((elapsed) / 60);
-        const seconds = (elapsed) % 60;
-        const timeStr = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-
-        setLiveTranscript((prev) => [
-          ...prev,
-          { speaker: nextLine.speaker, text: nextLine.text, time: timeStr, lowConfidence: nextLine.lowConfidence },
-        ]);
-
-        // Change active speaker & reset monologue timer on speaker switch
-        setActiveSpeaker((current) => {
-          if (current !== nextLine.speaker) {
-            setMonologueTimer(0);
-          }
-          return nextLine.speaker;
-        });
-
-        // Auto trigger notes or actions for demo feedback
-        if (nextLine.text.includes("Framer Motion")) {
-          setAiNotes((prev) => [...prev, { id: `note_${Date.now()}`, text: "Adopted Framer Motion for premium spring layouts." }]);
-        }
-        if (nextLine.text.includes("light and dark")) {
-          setLiveActions((prev) => [...prev, { id: `act_${Date.now()}`, text: "Implement light/dark mode switch in layout footers." }]);
-        }
-
-        dialogueIndex.current += 1;
-      }
-    }, 5500);
-
-    return () => clearInterval(injector);
-  }, [elapsed, id]);
-
-  // Real-time Sentiment Updater Tick
-  useEffect(() => {
-    if (id && id !== "mock") return;
     const sentimentTimer = setInterval(() => {
       setLiveSentiment((prev) => {
         const nextTime = (prev.length * 5) + "s";
-        const lastVal = prev[prev.length - 1]?.value || 75;
+        const lastVal = prev.length > 0 ? prev[prev.length - 1].value : 75;
         // Float between 70% and 95%
         const delta = Math.floor(Math.random() * 11) - 5; // -5 to +5
         const nextVal = Math.min(95, Math.max(70, lastVal + delta));
@@ -231,7 +217,7 @@ export const LiveMeeting: React.FC = () => {
       });
     }, 5000);
     return () => clearInterval(sentimentTimer);
-  }, [id]);
+  }, []);
 
   // Scroll to bottom of live transcript
   useEffect(() => {
@@ -297,12 +283,182 @@ export const LiveMeeting: React.FC = () => {
   // Compute stats
   const totalTalk = Object.values(talkTimes).reduce((a, b) => a + b, 0);
 
+  // Dynamic Sentiment Values
+  const lastPositivePct = liveSentiment.length > 0 ? liveSentiment[liveSentiment.length - 1].value : 80;
+  const neutralPct = Math.round((100 - lastPositivePct) * 0.8);
+  const negativePct = Math.max(0, 100 - lastPositivePct - neutralPct);
+
+  // Dynamic Coaching Advice
+  let coachingAdvice = "Analyzing sentiment trend...";
+  if (lastPositivePct >= 85) {
+    coachingAdvice = "AI consensus: Active momentum is very high. Great collaboration!";
+  } else if (lastPositivePct >= 75) {
+    coachingAdvice = "AI consensus: Positive momentum. Keep pushing key action items.";
+  } else if (liveSentiment.length > 0) {
+    coachingAdvice = "AI consensus: Meeting is stable. Encourage participants to contribute.";
+  }
+
+  // Dynamic Monologue Warning
+  const otherSpeakers = Object.keys(talkTimes).filter((name) => name !== activeSpeaker);
+  const otherSpeakersList = otherSpeakers.length > 0 ? otherSpeakers.join(" or ") : "other participants";
+
   // Speaker assigned tints
   const getSpeakerColor = (name: string) => {
     if (name === "Rahul Patel") return styles.colorRahul;
     if (name === "Mia Wong") return styles.colorMia;
     return styles.colorJay;
   };
+
+  // Conditional rendering based on meeting status
+  if (meetingStatus === "joining") {
+    return (
+      <div className={styles.statusContainer}>
+        <div className={styles.statusCard}>
+          <div className={styles.statusIconWrapper}>
+            <div className={styles.pulseRing} />
+            <div className={styles.pulseRing} />
+            <div className={styles.pulsingCircle}>
+              <PlayCircle size={32} />
+            </div>
+          </div>
+          <h2 className={styles.statusTitle}>Zapper Bot is joining the call...</h2>
+          <p className={styles.statusText}>
+            Our recorder bot is spawning in a secure container, launching a headless browser, and navigating to your meeting link.
+          </p>
+          <div className={styles.pipelineTimeline}>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${styles.completed}`}><Check size={12} /></span>
+              <span className={`${styles.stepLabel} ${styles.completed}`}>Virtual container initialized</span>
+            </div>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${styles.active}`}><Clock size={12} /></span>
+              <span className={`${styles.stepLabel} ${styles.active}`}>Navigating to Google Meet...</span>
+            </div>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${styles.pending}`}>3</span>
+              <span className={`${styles.stepLabel} ${styles.pending}`}>Waiting to request admission</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (meetingStatus === "lobby") {
+    return (
+      <div className={styles.statusContainer}>
+        <div className={styles.statusCard}>
+          <div className={styles.statusIconWrapper}>
+            <div className={`${styles.pulseRing} ${styles.lobby}`} />
+            <div className={`${styles.pulseRing} ${styles.lobby}`} />
+            <div className={`${styles.pulsingCircle} ${styles.lobby}`}>
+              <Users size={32} />
+            </div>
+          </div>
+          <h2 className={styles.statusTitle}>Waiting in meeting lobby</h2>
+          <p className={styles.statusText}>
+            The recorder bot has reached the join screen and is waiting to be admitted by a host.
+          </p>
+          <div className={styles.instructionBox}>
+            <div className={styles.instructionTitle}>
+              <AlertCircle size={14} />
+              Host Action Required
+            </div>
+            <p className={styles.instructionDesc}>
+              Please check your Google Meet window and accept the admission request for <strong>{import.meta.env.VITE_BOT_DISPLAY_NAME || "Zapper Recorder"}</strong>.
+            </p>
+          </div>
+          <div className={styles.pipelineTimeline}>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${styles.completed}`}><Check size={12} /></span>
+              <span className={`${styles.stepLabel} ${styles.completed}`}>Zapper container initialized</span>
+            </div>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${styles.completed}`}><Check size={12} /></span>
+              <span className={`${styles.stepLabel} ${styles.completed}`}>Navigated to Google Meet</span>
+            </div>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${styles.active}`}><Clock size={12} /></span>
+              <span className={`${styles.stepLabel} ${styles.active}`}>Waiting to be admitted...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (meetingStatus === "processing" || meetingStatus === "done") {
+    return (
+      <div className={styles.statusContainer}>
+        <div className={styles.statusCard}>
+          <div className={styles.statusIconWrapper}>
+            <div className={`${styles.pulseRing} ${styles.processing}`} />
+            <div className={`${styles.pulseRing} ${styles.processing}`} />
+            <div className={`${styles.pulsingCircle} ${styles.processing}`}>
+              {meetingStatus === "done" ? <Check size={32} /> : <Brain size={32} />}
+            </div>
+          </div>
+          <h2 className={styles.statusTitle}>
+            {meetingStatus === "done" ? "Processing complete!" : "AI post-processing active..."}
+          </h2>
+          <p className={styles.statusText}>
+            {meetingStatus === "done" 
+              ? "All transcription and summary insights have been compiled. Redirecting..." 
+              : "The call has ended. Zapper is running the AI analysis pipeline to extract notes, action items, and compute speaker analytics."}
+          </p>
+          
+          <div className={styles.pipelineTimeline}>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${styles.completed}`}><Check size={12} /></span>
+              <span className={`${styles.stepLabel} ${styles.completed}`}>Audio file saved</span>
+            </div>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${
+                pipelineStep === "transcribing" ? styles.active : styles.completed
+              }`}>
+                {pipelineStep === "transcribing" ? <Clock size={12} /> : <Check size={12} />}
+              </span>
+              <span className={`${styles.stepLabel} ${
+                pipelineStep === "transcribing" ? styles.active : styles.completed
+              }`}>
+                Transcribing audio recording
+              </span>
+            </div>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${
+                pipelineStep === "transcribing" ? styles.pending :
+                pipelineStep === "summarising" ? styles.active : styles.completed
+              }`}>
+                {pipelineStep === "transcribing" ? "3" :
+                 pipelineStep === "summarising" ? <Clock size={12} /> : <Check size={12} />}
+              </span>
+              <span className={`${styles.stepLabel} ${
+                pipelineStep === "transcribing" ? styles.pending :
+                pipelineStep === "summarising" ? styles.active : styles.completed
+              }`}>
+                Generating AI summaries & speaker map
+              </span>
+            </div>
+            <div className={styles.pipelineStep}>
+              <span className={`${styles.stepIcon} ${
+                pipelineStep === "finalising" ? styles.active :
+                pipelineStep === "done" ? styles.completed : styles.pending
+              }`}>
+                {pipelineStep === "done" ? <Check size={12} /> :
+                 pipelineStep === "finalising" ? <Clock size={12} /> : "4"}
+              </span>
+              <span className={`${styles.stepLabel} ${
+                pipelineStep === "finalising" ? styles.active :
+                pipelineStep === "done" ? styles.completed : styles.pending
+              }`}>
+                Finalizing action items & notes
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -316,7 +472,7 @@ export const LiveMeeting: React.FC = () => {
           <Badge className="badge-indigo">{meeting.meetingType}</Badge>
           <span className={styles.participantCount}>
             <Users size={12} />
-            3 online
+            {id === "mock" ? "3" : (dbMeeting?.participant_count || 0)} online
           </span>
         </div>
 
@@ -346,11 +502,11 @@ export const LiveMeeting: React.FC = () => {
       </div>
 
       {/* Monologue Warning Banner */}
-      {monologueTimer > 180 && activeSpeaker === "Rahul Patel" && (
+      {monologueTimer > 120 && activeSpeaker && (
         <div className={`${styles.monologueAlert} animate-slide-up`}>
           <AlertCircle size={16} />
           <span>
-            <strong>Monologue Alert:</strong> Rahul Patel has been speaking for {Math.floor(monologueTimer / 60)}m {monologueTimer % 60}s. Consider prompting Mia Wong or Jay Shah for their input to balance participation.
+            <strong>Monologue Alert:</strong> {activeSpeaker} has been speaking for {Math.floor(monologueTimer / 60)}m {monologueTimer % 60}s. Consider prompting {otherSpeakersList} for their input to balance participation.
           </span>
         </div>
       )}
@@ -389,15 +545,17 @@ export const LiveMeeting: React.FC = () => {
                 </p>
               </div>
             ))}
-            {/* Dynamic typing indicator on the last row if simulator is going */}
-            <div className={styles.typingIndicatorRow}>
-              <span className={styles.typingSpeaker}>{activeSpeaker} is speaking</span>
-              <div className={styles.typingBubbles}>
-                <span className={styles.bubble} />
-                <span className={styles.bubble} />
-                <span className={styles.bubble} />
+            {/* Dynamic typing indicator on the last row if activeSpeaker is speaking */}
+            {activeSpeaker && (
+              <div className={styles.typingIndicatorRow}>
+                <span className={styles.typingSpeaker}>{activeSpeaker} is speaking</span>
+                <div className={styles.typingBubbles}>
+                  <span className={styles.bubble} />
+                  <span className={styles.bubble} />
+                  <span className={styles.bubble} />
+                </div>
               </div>
-            </div>
+            )}
             <div ref={transcriptBottomRef} />
           </div>
         </Card>
@@ -462,15 +620,15 @@ export const LiveMeeting: React.FC = () => {
           <div className={styles.sentimentContent}>
             <div className={styles.sentimentStats}>
               <div className={styles.sentimentStat}>
-                <span className={styles.sentimentValText} style={{ color: "var(--emerald)" }}>82%</span>
+                <span className={styles.sentimentValText} style={{ color: "var(--emerald)" }}>{lastPositivePct}%</span>
                 <span className={styles.sentimentStatLabel}>Positive</span>
               </div>
               <div className={styles.sentimentStat}>
-                <span className={styles.sentimentValText} style={{ color: "var(--text-subtle)" }}>15%</span>
+                <span className={styles.sentimentValText} style={{ color: "var(--text-subtle)" }}>{neutralPct}%</span>
                 <span className={styles.sentimentStatLabel}>Neutral</span>
               </div>
               <div className={styles.sentimentStat}>
-                <span className={styles.sentimentValText} style={{ color: "var(--red)" }}>3%</span>
+                <span className={styles.sentimentValText} style={{ color: "var(--red)" }}>{negativePct}%</span>
                 <span className={styles.sentimentStatLabel}>Negative</span>
               </div>
             </div>
@@ -479,12 +637,13 @@ export const LiveMeeting: React.FC = () => {
               <AreaChart
                 data={liveSentiment}
                 color="var(--emerald)"
+                height={140}
               />
             </div>
 
             <div className={styles.coachingAlert}>
               <Sparkles size={14} className={styles.alertIcon} />
-              <span>AI consensus: Active momentum is high. Push key action items now to lock in decisions.</span>
+              <span>{coachingAdvice}</span>
             </div>
           </div>
         </Card>
@@ -512,6 +671,22 @@ export const LiveMeeting: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Active Participants List */}
+            {dbMeeting?.participant_names && dbMeeting.participant_names.length > 0 && (
+              <div className={styles.participantsSection}>
+                <h4>Active on Call</h4>
+                <div className={styles.participantsList}>
+                  {dbMeeting.participant_names.map((name) => (
+                    <div key={name} className={styles.participantRow}>
+                      <Avatar name={name} size="xs" />
+                      <span className={styles.participantName}>{name}</span>
+                      {activeSpeaker === name && <span className={styles.speakingBadge}>speaking</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* AI Assistant Chat in Sidebar */}
             <div className={styles.liveChatWidget}>

@@ -21,11 +21,16 @@ export function useWebSocket({ meetingId, onEvent, enabled = true }: UseWebSocke
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { token } = useAuthStore();
 
+  const onEventRef = useRef(onEvent);
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
+
   const connect = useCallback(() => {
     if (!enabled || !meetingId || !token) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const url = `${WS_URL}/api/v1/ws/meetings/${meetingId}?token=${encodeURIComponent(token)}`;
+    const url = `${WS_URL}/ws/meetings/${meetingId}?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -36,7 +41,7 @@ export function useWebSocket({ meetingId, onEvent, enabled = true }: UseWebSocke
     ws.onmessage = (e) => {
       try {
         const evt = JSON.parse(e.data) as LiveEvent;
-        onEvent(evt);
+        onEventRef.current(evt);
       } catch {
         // ignore malformed frames
       }
@@ -52,7 +57,7 @@ export function useWebSocket({ meetingId, onEvent, enabled = true }: UseWebSocke
     ws.onerror = () => {
       ws.close();
     };
-  }, [meetingId, token, enabled, onEvent]);
+  }, [meetingId, token, enabled]);
 
   useEffect(() => {
     connect();

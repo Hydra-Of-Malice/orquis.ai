@@ -3,13 +3,20 @@ import api from './api';
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface OverviewStats {
   total_meetings: number;
-  total_meetings_delta: number;
-  total_hours: number;
-  total_hours_delta: number;
+  meetings_this_week: number;
+  hours_saved: number;
+  action_item_completion_rate: number;
+  total_action_items: number;
   avg_health_score: number;
-  avg_health_delta: number;
-  action_items_completed: number;
-  action_items_total: number;
+  avg_meeting_duration_mins: number;
+  recent_insights?: any[];
+  // Legacy fields to prevent typescript errors elsewhere
+  total_meetings_delta?: number;
+  total_hours?: number;
+  total_hours_delta?: number;
+  avg_health_delta?: number;
+  action_items_completed?: number;
+  action_items_total?: number;
 }
 
 export interface SentimentPoint {
@@ -60,7 +67,7 @@ export const analyticsApi = {
     api.get<SpeakerTalkTime[]>('/analytics/department-hours').then(r => r.data),
 
   getTeamMembers: () =>
-    api.get<TeamMember[]>('/analytics/team').then(r => r.data),
+    api.get<any>('/analytics/team').then(r => r.data),
 
   getCoachingScores: (params?: { weeks?: number }) =>
     api.get<CoachingScore[]>('/analytics/coaching', { params }).then(r => r.data),

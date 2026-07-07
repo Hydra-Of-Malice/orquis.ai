@@ -9,6 +9,7 @@ import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { Avatar } from "../components/ui/Avatar";
 import { EmptyState } from "../components/ui/EmptyState";
+import { JoinMeetingModal } from "../components/modals/JoinMeetingModal";
 import {
   Search,
   Film,
@@ -44,6 +45,10 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
+  const isLive = (status: string) => {
+    return status === "joining" || status === "lobby" || status === "recording" || status === "live";
+  };
+
   const { data: rawMeetings = [], isLoading } = useQuery({
     queryKey: ["meetings"],
     queryFn: () => meetingsApi.list({ limit: 100 }),
@@ -64,6 +69,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
     sentiment: m.sentiment,
     participantNames: m.participant_names || [],
     participantCount: m.participant_count || 0,
+    summaryMd: m.summary_md || "",
   }));
 
   // Set filter based on prop or route matching
@@ -81,6 +87,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
   const [durationFilter, setDurationFilter] = useState("all");
   const [sortFilter, setSortFilter] = useState("newest");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isJoinOpen, setIsJoinOpen] = useState(false);
 
   useEffect(() => {
     setFilter(getInitialFilter());
@@ -93,7 +100,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
     
     // Primary tabs filter
     let statusMatch = true;
-    if (filter === "live") statusMatch = m.status === "live";
+    if (filter === "live") statusMatch = isLive(m.status);
     else if (filter === "upcoming") statusMatch = m.status === "scheduled";
     else if (filter === "recordings") statusMatch = m.status === "completed" || m.status === "processing";
     else if (filter === "uploaded") statusMatch = m.meetingType === "uploaded";
@@ -133,13 +140,17 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
     return 0;
   });
 
-  // Helper to format duration
+  // Smart duration format: Xs / M:SS min / Xh Ym
   const formatDuration = (seconds: number) => {
-    if (!seconds) return "0 mins";
-    const mins = Math.floor(seconds / 60);
-    if (mins < 60) return `${mins} mins`;
-    const hrs = Math.floor(mins / 60);
-    const remainingMins = mins % 60;
+    if (!seconds || seconds <= 0) return "0s";
+    if (seconds < 60) return `${seconds}s`;
+    const totalMins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (totalMins < 60) {
+      return secs > 0 ? `${totalMins}:${String(secs).padStart(2, "0")} min` : `${totalMins} min`;
+    }
+    const hrs = Math.floor(totalMins / 60);
+    const remainingMins = totalMins % 60;
     return remainingMins > 0 ? `${hrs}h ${remainingMins}m` : `${hrs}h`;
   };
 
@@ -157,9 +168,9 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
   };
 
   // Grouping sorted meetings for better UI breakdown
-  const liveSection = sortedMeetings.filter(m => m.status === "live");
+  const liveSection = sortedMeetings.filter(m => isLive(m.status));
   const processingSection = sortedMeetings.filter(m => m.status === "processing");
-  const completedSection = sortedMeetings.filter(m => m.status !== "live" && m.status !== "processing");
+  const completedSection = sortedMeetings.filter(m => !isLive(m.status) && m.status !== "processing");
 
   const clearFilters = () => {
     setSearch("");
@@ -188,8 +199,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
                   key={tab}
                   className={clsx(styles.tabBtn, filter === tab && styles.tabActive)}
                   onClick={() => {
-                    setFilter(tab);
-                    clearFilters();
+                    navigate(`/meetings/${tab}`);
                   }}
                 >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -329,10 +339,12 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
                 : "You don't have any recordings in this category. Join a call to start tracking in real-time."
             }
             actionText={hasActiveFilters ? "Reset Filters" : "Call Zapper Bot"}
-            onAction={hasActiveFilters ? clearFilters : () => navigate("/dashboard")}
+            onAction={hasActiveFilters ? clearFilters : () => setIsJoinOpen(true)}
           />
         )}
       </div>
+      
+      <JoinMeetingModal isOpen={isJoinOpen} onClose={() => setIsJoinOpen(false)} />
     </div>
   );
 
@@ -348,11 +360,27 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
       minute: "2-digit",
     });
 
-    const mockExcerpt = m.status === "completed" 
-      ? "AI Excerpt: Aligning on wireframe layouts and finalizing database entity relationships. Tasks delegated to engineering."
+    // Real excerpt: use summary_md first two sentences, else status message
+    const rawSummary = (m as any).summaryMd || "";
+    const sentenceMatch = rawSummary.match(/[^.!?]*[.!?]/g);
+    const realExcerpt = sentenceMatch && sentenceMatch.length > 0
+      ? sentenceMatch.slice(0, 2).join(" ").trim()
+      : "";
+
+    const statusExcerpt = m.status === "completed"
+      ? "Meeting complete. Click to view AI summary, transcript, and action items."
       : m.status === "processing"
-      ? "AI Excerpt: Currently parsing audio file, calculating voice energy balance and extracting main action items..."
-      : "AI Excerpt: Call active. Live Whisper transcription feed streaming. Capture metrics in progress.";
+      ? "AI is transcribing audio, matching speakers, and generating insights…"
+      : "Call active — live Whisper transcription streaming.";
+
+    const excerpt = realExcerpt || statusExcerpt;
+
+    // Participant avatars: max 3 shown, rest as +N
+    const names: string[] = m.participantNames && m.participantNames.length > 0
+      ? m.participantNames
+      : [];
+    const visibleNames = names.slice(0, 3);
+    const overflowCount = names.length - visibleNames.length;
 
     if (viewMode === "list") {
       // TABLE LIST ROW LAYOUT
@@ -360,7 +388,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
         <div
           key={m.id}
           className={clsx(styles.listRow, m.status === "processing" && styles.processingRow)}
-          onClick={() => navigate(m.status === "live" ? `/live/${m.id}` : `/meetings/${m.id}`)}
+          onClick={() => navigate(isLive(m.status) ? `/live/${m.id}` : `/meetings/${m.id}`)}
         >
           <div className={styles.platformBadgeCell}>
             <Badge className={getPlatformClass(m.meetingType)}>
@@ -370,7 +398,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
           
           <div className={styles.rowMainInfo}>
             <span className={styles.rowTitle}>{m.title}</span>
-            <span className={styles.rowExcerpt}>{mockExcerpt}</span>
+            <span className={styles.rowExcerpt}>{excerpt}</span>
           </div>
 
           <div className={styles.rowTimeCell}>
@@ -384,9 +412,12 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
 
           <div className={styles.rowAvatars}>
             <div className={styles.avatarsList}>
-              <Avatar name="Rahul Patel" size="xs" />
-              {m.status !== "live" && <Avatar name="Mia Wong" size="xs" />}
-              {m.status === "completed" && <Avatar name="Jay Shah" size="xs" />}
+              {visibleNames.map((name) => (
+                <Avatar key={name} name={name} size="xs" />
+              ))}
+              {overflowCount > 0 && (
+                <span className={styles.avatarOverflow}>+{overflowCount}</span>
+              )}
             </div>
           </div>
 
@@ -416,7 +447,7 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
       <Card
         key={m.id}
         className={clsx(styles.meetingCard, m.status === "processing" && styles.processingCard)}
-        onClick={() => navigate(m.status === "live" ? `/live/${m.id}` : `/meetings/${m.id}`)}
+        onClick={() => navigate(isLive(m.status) ? `/live/${m.id}` : `/meetings/${m.id}`)}
       >
         {/* Color Strip Header */}
         <div className={clsx(styles.platformStrip, styles[`strip-${m.meetingType}`])} />
@@ -427,10 +458,10 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
               {m.meetingType}
             </Badge>
             
-            {m.status === "live" ? (
+            {isLive(m.status) ? (
               <span className={styles.liveIndicator}>
                 <span className={styles.liveDot} />
-                LIVE NOW
+                {m.status === "joining" ? "BOT JOINING" : m.status === "lobby" ? "IN LOBBY" : "LIVE NOW"}
               </span>
             ) : m.status === "processing" ? (
               <span className={styles.processingIndicator}>
@@ -447,14 +478,20 @@ export const MeetingsList: React.FC<MeetingsListProps> = ({
           <div className={styles.cardBody}>
             <h3 className={styles.meetingTitle}>{m.title}</h3>
             <span className={styles.cardDisplayTime}>{displayTime}</span>
-            <p className={styles.cardExcerpt}>{mockExcerpt}</p>
+            <p className={styles.cardExcerpt}>{excerpt}</p>
           </div>
 
           <div className={styles.cardFooter}>
             <div className={styles.avatarsList}>
-              <Avatar name="Rahul Patel" size="xs" />
-              {m.status !== "live" && <Avatar name="Mia Wong" size="xs" />}
-              {m.status === "completed" && <Avatar name="Jay Shah" size="xs" />}
+              {visibleNames.map((name) => (
+                <Avatar key={name} name={name} size="xs" />
+              ))}
+              {overflowCount > 0 && (
+                <span className={styles.avatarOverflow}>+{overflowCount}</span>
+              )}
+              {visibleNames.length === 0 && (
+                <span className={styles.noParticipants}>No participants</span>
+              )}
             </div>
 
             {m.healthScore && (

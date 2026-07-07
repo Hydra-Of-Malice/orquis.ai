@@ -441,12 +441,21 @@ class LiveTranscriptBuffer:
 
     def _is_duplicate(self, text: str) -> bool:
         """True if this text was published within the dedup TTL window."""
-        return self._segment_hash(text) in self._published_hashes
+        h = self._segment_hash(text)
+        if h in self._published_hashes:
+            return True
+        if self.master_buf and h in self.master_buf._published_hashes:
+            return True
+        return False
 
     def _mark_published(self, text: str) -> None:
         """Record this text as published for future dedup checks."""
         self._evict_old_hashes()
-        self._published_hashes[self._segment_hash(text)] = time.time()
+        h = self._segment_hash(text)
+        self._published_hashes[h] = time.time()
+        if self.master_buf:
+            self.master_buf._evict_old_hashes()
+            self.master_buf._published_hashes[h] = time.time()
 
     async def process(self, audio_queue: asyncio.Queue):
         """
@@ -590,7 +599,7 @@ class LiveTranscriptBuffer:
 
                                 async with httpx.AsyncClient(timeout=10) as c:
                                     await c.post(
-                                        f"{backend_url}/api/recordings/{self.recording_id}/segments",
+                                        f"{backend_url}/api/v1/meetings/{self.recording_id}/transcript/segments",
                                         json={
                                             "id": segment_id,
                                             "speaker_name": spk_name,
@@ -601,23 +610,7 @@ class LiveTranscriptBuffer:
                                         }
                                     )
 
-                                if r_client:
-                                    payload = {
-                                        "type": "segment",
-                                        "recording_id": self.recording_id,
-                                        "segment": {
-                                            "id": segment_id,
-                                            "speaker_name": spk_name,
-                                            "start_ms": start_ms,
-                                            "end_ms": end_ms,
-                                            "text": cleaned,
-                                            "confidence": confidence,
-                                        }
-                                    }
-                                    r_client.publish(
-                                        f"zapper:live:{self.recording_id}",
-                                        json.dumps(payload),
-                                    )
+                                # Redis publish is already handled by the backend /transcript/segments POST endpoint.
 
                         else:
                             # ── Legacy path: local faster-whisper (text only) ──
@@ -658,7 +651,7 @@ class LiveTranscriptBuffer:
 
                                 async with httpx.AsyncClient(timeout=10) as c:
                                     await c.post(
-                                        f"{backend_url}/api/recordings/{self.recording_id}/segments",
+                                        f"{backend_url}/api/v1/meetings/{self.recording_id}/transcript/segments",
                                         json={
                                             "id": segment_id,
                                             "speaker_name": spk_name,
@@ -669,23 +662,7 @@ class LiveTranscriptBuffer:
                                         }
                                     )
 
-                                if r_client:
-                                    payload = {
-                                        "type": "segment",
-                                        "recording_id": self.recording_id,
-                                        "segment": {
-                                            "id": segment_id,
-                                            "speaker_name": spk_name,
-                                            "start_ms": start_ms,
-                                            "end_ms": end_ms,
-                                            "text": text,
-                                            "confidence": 1.0,
-                                        }
-                                    }
-                                    r_client.publish(
-                                        f"zapper:live:{self.recording_id}",
-                                        json.dumps(payload),
-                                    )
+                                # Redis publish is already handled by the backend /transcript/segments POST endpoint.
 
                     except Exception as e:
                         print(

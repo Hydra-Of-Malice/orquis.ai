@@ -169,9 +169,11 @@ async def list_meetings(
     if q:
         query = query.where(Meeting.title.ilike(f"%{q}%"))
     if from_date:
-        query = query.where(Meeting.started_at >= from_date)
+        parsed_from = datetime.fromisoformat(from_date.replace("Z", "+00:00"))
+        query = query.where(Meeting.started_at >= parsed_from)
     if to_date:
-        query = query.where(Meeting.started_at <= to_date)
+        parsed_to = datetime.fromisoformat(to_date.replace("Z", "+00:00"))
+        query = query.where(Meeting.started_at <= parsed_to)
     query = query.limit(limit).offset(offset)
 
     result = await db.execute(query)

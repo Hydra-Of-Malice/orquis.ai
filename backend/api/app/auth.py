@@ -62,17 +62,24 @@ def decode_token(token: str) -> dict:
 
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+    token: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.models import User
 
-    if not credentials:
+    raw_token = None
+    if credentials:
+        raw_token = credentials.credentials
+    elif token:
+        raw_token = token
+
+    if not raw_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    payload = decode_token(credentials.credentials)
+    payload = decode_token(raw_token)
     if payload.get("type") != "access":
         raise HTTPException(status_code=401, detail="Invalid token type")
 

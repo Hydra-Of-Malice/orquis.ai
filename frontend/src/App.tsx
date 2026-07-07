@@ -54,9 +54,11 @@ export const App: React.FC = () => {
             <Shell>
               <Routes>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/meetings/all" element={<MeetingsList defaultFilter="all" />} />
                 <Route path="/meetings/live" element={<MeetingsList defaultFilter="live" />} />
                 <Route path="/meetings/upcoming" element={<MeetingsList defaultFilter="upcoming" />} />
                 <Route path="/meetings/recordings" element={<MeetingsList defaultFilter="recordings" />} />
+                <Route path="/meetings/uploaded" element={<MeetingsList defaultFilter="uploaded" />} />
                 <Route path="/meetings/:id" element={<MeetingDetail />} />
                 <Route path="/live/:id" element={<LiveMeeting />} />
                 <Route path="/search" element={<Search />} />

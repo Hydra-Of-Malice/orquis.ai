@@ -88,14 +88,34 @@ async def complete_meeting(
     if not rec:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
+    now = datetime.now(timezone.utc)
     rec.wav_path = req.wav_path
     rec.participant_names = req.participant_names
     rec.participant_count = req.participant_count or len(req.participant_names)
     rec.audio_size_bytes = req.audio_size_bytes
-    rec.duration_seconds = req.duration_seconds
+    rec.ended_at = now
+    # Calculate duration from timestamps if bot didn't send it explicitly
+    if req.duration_seconds:
+        rec.duration_seconds = req.duration_seconds
+    elif rec.started_at:
+        started = rec.started_at if rec.started_at.tzinfo else rec.started_at.replace(tzinfo=timezone.utc)
+        rec.duration_seconds = max(0, int((now - started).total_seconds()))
     rec.status = "processing"
-    rec.ended_at = datetime.now(timezone.utc)
     await db.commit()
+
+    # Publish status change to Redis
+    try:
+        import redis.asyncio as aioredis
+        import json
+        redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+        r = aioredis.from_url(redis_url)
+        await r.publish(
+            f"zapper:live:{meeting_id}",
+            json.dumps({"type": "status_change", "status": "processing"})
+        )
+        await r.aclose()
+    except Exception as e:
+        print(f"[bot] Redis status publish failed (non-fatal): {e}", flush=True)
 
     # Free the bot slot
     await bot_manager.free_slot(meeting_id)
@@ -160,5 +180,65 @@ async def update_status(
     if not rec:
         raise HTTPException(status_code=404, detail="Meeting not found")
     rec.status = status
+    await db.commit()
+
+    # Publish status change to Redis
+    try:
+        import redis.asyncio as aioredis
+        import json
+        redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+        r = aioredis.from_url(redis_url)
+        await r.publish(
+            f"zapper:live:{meeting_id}",
+            json.dumps({"type": "status_change", "status": status})
+        )
+        await r.aclose()
+    except Exception as e:
+        print(f"[bot] Redis status publish failed (non-fatal): {e}", flush=True)
+
+    return {"ok": True}
+
+
+class SpeakerRenameRequest(BaseModel):
+    old_name: str
+    new_name: str
+
+
+@router.get("/bot/meetings/{meeting_id}")
+async def get_bot_meeting(
+    meeting_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Internal endpoint for the bot to query meeting status, muting, and context."""
+    result = await db.execute(select(Meeting).where(Meeting.id == meeting_id))
+    rec = result.scalar_one_or_none()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    return {
+        "id": rec.id,
+        "title": rec.title,
+        "status": rec.status,
+        "zapper_muted": rec.zapper_muted,
+        "participant_names": rec.participant_names or [],
+    }
+
+
+@router.patch("/bot/meetings/{meeting_id}/transcript/speaker")
+async def bot_rename_speaker(
+    meeting_id: str,
+    req: SpeakerRenameRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Rename all segments from old_name to new_name for this meeting (bot internal)."""
+    from app.models.models import TranscriptSegment
+    from sqlalchemy import update
+    await db.execute(
+        update(TranscriptSegment)
+        .where(
+            TranscriptSegment.meeting_id == meeting_id,
+            TranscriptSegment.speaker_name == req.old_name,
+        )
+        .values(speaker_name=req.new_name)
+    )
     await db.commit()
     return {"ok": True}

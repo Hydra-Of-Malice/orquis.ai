@@ -371,6 +371,28 @@
   margin-left: 0;
 }
 
+.avatarOverflow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--card);
+  margin-left: -6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: -0.5px;
+}
+
+.noParticipants {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .healthContainer {
   position: relative;
   display: flex;

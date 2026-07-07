@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/authStore";
@@ -16,6 +17,7 @@ import { ContributionGrid } from "../components/charts/ContributionGrid";
 import { Modal } from "../components/ui/Modal";
 import { Input } from "../components/ui/Input";
 import { StatCard } from "../components/ui/StatCard";
+import { JoinMeetingModal } from "../components/modals/JoinMeetingModal";
 import { ProgressRing } from "../components/ui/ProgressRing";
 import {
   Plus,
@@ -37,35 +39,62 @@ interface DashboardProps {
   onOpenCommandPalette?: () => void;
 }
 
-// Countdown component for next meeting
-const CountdownTimer: React.FC = () => {
-  const [seconds, setSeconds] = useState(1342); // ~22 mins
+// Dynamic Meeting Widget
+const MeetingWidget: React.FC<{ liveMeeting?: any, lastMeeting?: any }> = ({ liveMeeting, lastMeeting }) => {
+  if (liveMeeting) {
+    return (
+      <div className={styles.countdownBox}>
+        <div className={styles.countdownHeader}>
+          <span className={styles.pulseDot} />
+          <span className={styles.countdownTitle}>Active Meeting</span>
+        </div>
+        <div className={styles.countdownVal} style={{ fontSize: '1.25rem', marginBottom: '8px' }}>
+          {liveMeeting.title || "Untitled Meeting"}
+        </div>
+        <div className={styles.countdownMeta}>
+          <span className={styles.countdownName}>{liveMeeting.platform === 'meet' ? 'Google Meet' : 'Zoom'}</span>
+          <span className={styles.countdownPlatform}>{liveMeeting.status === 'recording' ? 'Recording in progress...' : 'Processing...'}</span>
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+  if (lastMeeting) {
+    return (
+      <div className={styles.countdownBox}>
+        <div className={styles.countdownHeader}>
+          <span className={styles.countdownTitle} style={{ color: 'var(--text-secondary)' }}>Last Recorded Meeting</span>
+        </div>
+        <div className={styles.countdownVal} style={{ fontSize: '1.25rem', marginBottom: '8px', lineHeight: 1.2 }}>
+          {lastMeeting.title || "Untitled Meeting"}
+        </div>
+        <div className={styles.countdownMeta}>
+          <span className={styles.countdownName}>{lastMeeting.duration_seconds ? Math.round(lastMeeting.duration_seconds / 60) + 'm duration' : 'Recent'}</span>
+          <span className={styles.countdownPlatform}>{lastMeeting.participant_count || 1} participants</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.countdownBox}>
       <div className={styles.countdownHeader}>
-        <span className={styles.pulseDot} />
-        <span className={styles.countdownTitle}>Upcoming Meeting</span>
+        <span className={styles.countdownTitle} style={{ color: 'var(--text-secondary)' }}>No Meetings Yet</span>
       </div>
-      <div className={styles.countdownVal}>
-        {mins}m {secs.toString().padStart(2, "0")}s
-      </div>
-      <div className={styles.countdownMeta}>
-        <span className={styles.countdownName}>Q3 Design & Feedback Sync</span>
-        <span className={styles.countdownPlatform}>Zoom • 12 participants</span>
+      <div className={styles.countdownVal} style={{ fontSize: '1rem', color: 'var(--text-tertiary)' }}>
+        Join a call to get started.
       </div>
     </div>
   );
+};
+
+// Helper to clean up speaker names for display
+const formatSpeakerName = (name: string) => {
+  if (!name) return "Unknown";
+  if (name.startsWith("Unknown")) {
+    return name.replace("Unknown", "Speaker");
+  }
+  return name.split(' ')[0]; // First name only for real people
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) => {
@@ -92,43 +121,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
     retry: 1,
   });
 
+  const { data: recentTasks = [] } = useQuery({
+    queryKey: ['tasks', 'recent'],
+    queryFn: () => tasksApi.list({ limit: 10 }),
+    retry: 1,
+  });
+
   const { data: overview } = useQuery({
     queryKey: ['analytics-overview'],
     queryFn: () => analyticsApi.getOverview({ days: 30 }),
     retry: 1,
   });
 
-  const { data: sentimentTrend } = useQuery({
-    queryKey: ['sentiment-trend'],
-    queryFn: () => analyticsApi.getSentimentTrend({ days: 7 }),
+  const { data: teamData } = useQuery({
+    queryKey: ['team-data'],
+    queryFn: () => analyticsApi.getTeamMembers(),
     retry: 1,
-  });
-
-  const { data: deptHours } = useQuery({
-    queryKey: ['dept-hours'],
-    queryFn: () => analyticsApi.getDepartmentHours(),
-    retry: 1,
-  });
-
-  // ── Bot start mutation ─────────────────────────────────────────────────────
-  const startBotMutation = useMutation({
-    mutationFn: meetingsApi.startBot,
-    onSuccess: (meeting) => {
-      queryClient.invalidateQueries({ queryKey: ['meetings'] });
-      setIsJoinOpen(false);
-      setMeetingTitleInput('');
-      setMeetingUrlInput('');
-      navigate(`/live/${meeting.id}`);
-    },
   });
 
   // ── Modals state ───────────────────────────────────────────────────────────
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [meetingTitleInput, setMeetingTitleInput] = useState("");
-  const [meetingUrlInput, setMeetingUrlInput] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [botError, setBotError] = useState("");
 
   // ── Greeting animation ─────────────────────────────────────────────────────
   const [greetingText, setGreetingText] = useState("");
@@ -152,30 +166,122 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
   });
 
   // ── Derived metrics ────────────────────────────────────────────────────────
-  const liveMeeting = meetings.find((m) => m.status === "recording");
+  const liveMeeting = meetings.find((m) => m.status === "joining" || m.status === "lobby" || m.status === "recording" || m.status === "processing");
+  const completedMeetings = meetings.filter((m) => m.status === "done");
+  const lastMeeting = completedMeetings[0];
   const openTasks = taskStats?.todo ?? 0;
   const overdueTasks = taskStats?.overdue ?? 0;
   const avgHealth = overview?.avg_health_score ?? 0;
 
-  const sentimentData = sentimentTrend?.length
-    ? sentimentTrend
-    : [{ name: "Mon", value: 65 }, { name: "Tue", value: 72 }, { name: "Wed", value: 68 },
-       { name: "Thu", value: 80 }, { name: "Fri", value: 75 }, { name: "Sat", value: 70 }, { name: "Sun", value: 82 }];
+  const totalMeetingHours = React.useMemo(() => {
+    if (!overview) return 0;
+    const totalMins = (overview.avg_meeting_duration_mins || 0) * (overview.total_meetings || 0);
+    return Math.round((totalMins / 60) * 10) / 10;
+  }, [overview]);
 
-  const speakingBalanceData = deptHours?.length
-    ? deptHours.slice(0, 4)
-    : [{ name: "Engineering", value: 55 }, { name: "Product", value: 30 }, { name: "Sales", value: 15 }];
+  const meetingsSparkline = React.useMemo(() => {
+    if (completedMeetings.length === 0) return [0, 0, 0, 0, 0, 0, 0];
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    const now = new Date();
+    completedMeetings.forEach(m => {
+      const diffTime = Math.abs(now.getTime() - new Date(m.created_at || Date.now()).getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays < 7) {
+        counts[6 - diffDays]++;
+      }
+    });
+    // Cumulative progression
+    const cumulative = [];
+    let sum = 0;
+    for (let i = 0; i < 7; i++) {
+      sum += counts[i];
+      cumulative.push(sum);
+    }
+    return cumulative;
+  }, [completedMeetings]);
+
+  const hoursSparkline = React.useMemo(() => {
+    if (completedMeetings.length === 0) return [0, 0, 0, 0, 0, 0, 0];
+    const hoursPerDay = [0, 0, 0, 0, 0, 0, 0];
+    const now = new Date();
+    completedMeetings.forEach(m => {
+      const diffTime = Math.abs(now.getTime() - new Date(m.created_at || Date.now()).getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays < 7) {
+        hoursPerDay[6 - diffDays] += (m.duration_seconds || 0) / 3600;
+      }
+    });
+    // Cumulative progression
+    const cumulative = [];
+    let sum = 0;
+    for (let i = 0; i < 7; i++) {
+      sum += hoursPerDay[i];
+      cumulative.push(Math.round(sum * 10) / 10);
+    }
+    return cumulative;
+  }, [completedMeetings]);
+
+  const sentimentData = React.useMemo(() => {
+    if (completedMeetings.length === 0) return [];
+    // Take up to last 7 meetings, reverse chronological to chronological for the chart
+    const recent = completedMeetings.slice(0, 7).reverse();
+    const mapped = recent.map(m => ({
+      name: new Date(m.created_at || Date.now()).toLocaleDateString('en-US', { weekday: 'short' }),
+      value: m.health_score || 0
+    }));
+
+    // If only 1 meeting, prepend a baseline point so Recharts AreaChart renders correctly
+    if (mapped.length === 1) {
+      return [
+        { name: "Start", value: 50 },
+        mapped[0]
+      ];
+    }
+    return mapped;
+  }, [completedMeetings]);
+
+  const speakingBalanceData = React.useMemo(() => {
+    if (!teamData?.team_members?.length) return [];
+    return teamData.team_members.slice(0, 4).map((member: any) => ({
+      name: formatSpeakerName(member.name),
+      value: member.total_talk_minutes
+    }));
+  }, [teamData]);
+
+  const intelligenceFeed = React.useMemo(() => {
+    const feed: any[] = [];
+    completedMeetings.slice(0, 5).forEach(m => {
+      feed.push({
+        id: `m-${m.id}`,
+        text: `Meeting **${m.title || 'Untitled'}** processed successfully.`,
+        date: new Date(m.created_at || Date.now()),
+        color: 'emerald'
+      });
+    });
+    recentTasks.slice(0, 8).forEach((t: any) => {
+      feed.push({
+        id: `t-${t.id}`,
+        text: t.status === 'done' 
+          ? `Action item **"${t.title}"** marked as done.` 
+          : `New action item **"${t.title}"** assigned to ${t.assignee_name || 'someone'}.`,
+        date: new Date(t.created_at || Date.now()),
+        color: t.status === 'done' ? 'purple' : 'indigo'
+      });
+    });
+    return feed.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 4);
+  }, [completedMeetings, recentTasks]);
+
+  const proTip = React.useMemo(() => {
+    if (overdueTasks > 0) {
+      return `You have ${overdueTasks} overdue tasks. Consider dedicating 15 minutes today to clearing your backlog.`;
+    }
+    if (avgHealth > 0 && avgHealth < 70) {
+      return `Your average meeting health is ${avgHealth}%. Try asking open-ended questions like "Mia, what are your thoughts?" to increase team engagement by 15%.`;
+    }
+    return `Your meeting health is looking great! Maintain this momentum by keeping discussions focused and action-oriented.`;
+  }, [overdueTasks, avgHealth]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleJoinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setBotError('');
-    if (!meetingUrlInput) { setBotError('Meeting URL is required'); return; }
-    startBotMutation.mutate({
-      meeting_url: meetingUrlInput,
-      title: meetingTitleInput || undefined,
-    });
-  };
 
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,18 +381,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
                 value={overview?.total_meetings ?? meetings.length}
                 icon={<Calendar size={20} />}
                 iconColor="indigo"
-                trend={{ value: overview?.total_meetings_delta ?? 0, isPositive: (overview?.total_meetings_delta ?? 0) >= 0, label: "vs last month" }}
-                sparklineData={[1, 2, 4, 3, 2, 5, meetings.length]}
+                trend={{
+                  value: Math.abs(overview?.total_meetings_delta ?? 0),
+                  isPositive: (overview?.total_meetings_delta ?? 0) >= 0,
+                  label: "vs last month"
+                }}
+                sparklineData={meetingsSparkline}
               />
 
               <StatCard
                 title="Meeting Hours"
-                value={Math.round((overview?.total_hours ?? 0) * 10) / 10}
+                value={totalMeetingHours}
                 formatter={(v) => `${v}h`}
                 icon={<Clock size={20} />}
                 iconColor="emerald"
-                trend={{ value: overview?.total_hours_delta ?? 0, isPositive: (overview?.total_hours_delta ?? 0) >= 0, label: "vs last month" }}
-                sparklineData={[2.1, 2.8, 3.2, 3.5, 4.0, 3.8, overview?.total_hours ?? 4.2]}
+                trend={{
+                  value: Math.abs(overview?.total_hours_delta ?? 0),
+                  isPositive: (overview?.total_hours_delta ?? 0) >= 0,
+                  label: "vs last month"
+                }}
+                sparklineData={hoursSparkline}
               />
 
               <StatCard
@@ -295,7 +409,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
                 icon={<CheckSquare size={20} />}
                 iconColor="amber"
                 trend={{ value: overdueTasks, isPositive: overdueTasks === 0, label: `${overdueTasks} overdue` }}
-                sparklineData={[12, 10, 8, 9, 7, 8, openTasks]}
+                sparklineData={[openTasks, openTasks, openTasks, openTasks, openTasks, openTasks, openTasks]}
               />
 
               <div className={`${styles.healthProgressCard} glass-card`}>
@@ -314,17 +428,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
             <div className={styles.chartsGrid}>
               <Card className={styles.chartCard}>
                 <h3>Sentiment Timeline</h3>
-                <p className={styles.chartSub}>Weekly aggregated mood tracking</p>
+                <p className={styles.chartSub}>Recent meeting mood tracking</p>
                 <div className={styles.chartWrapper}>
-                  <AreaChart data={sentimentData} color="var(--indigo)" />
+                  {sentimentData.length > 0 ? (
+                    <AreaChart data={sentimentData} color="var(--indigo)" />
+                  ) : (
+                    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+                      Not enough data yet
+                    </div>
+                  )}
                 </div>
               </Card>
 
               <Card className={styles.chartCard}>
                 <h3>Speaking Balance</h3>
-                <p className={styles.chartSub}>Talk time contribution distribution</p>
+                <p className={styles.chartSub}>Talk time contribution (minutes)</p>
                 <div className={styles.chartWrapper}>
-                  <BarChart data={speakingBalanceData} />
+                  {speakingBalanceData.length > 0 ? (
+                    <BarChart data={speakingBalanceData} />
+                  ) : (
+                    <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+                      Not enough data yet
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
@@ -348,7 +474,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
                     <div
                       key={m.id}
                       className={styles.scheduleRow}
-                      onClick={() => navigate(m.status === "recording" ? `/live/${m.id}` : `/meetings/${m.id}`)}
+                      onClick={() => navigate(m.status === "joining" || m.status === "lobby" || m.status === "recording" ? `/live/${m.id}` : `/meetings/${m.id}`)}
                     >
                       <div className={styles.scheduleTime}>
                         <Clock size={14} />
@@ -358,7 +484,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
                         <span className={styles.scheduleTitle}>{m.title || 'Untitled Meeting'}</span>
                         <div className={styles.rowTags}>
                           <Badge className={m.platform === 'meet' ? 'badge-emerald' : 'badge-indigo'}>{m.platform}</Badge>
-                          <Badge className={m.status === 'recording' ? 'badge-red' : m.status === 'done' ? 'badge-emerald' : 'badge-gray'}>{m.status}</Badge>
+                          <Badge className={m.status === 'joining' || m.status === 'lobby' || m.status === 'recording' ? 'badge-red' : m.status === 'done' ? 'badge-emerald' : 'badge-gray'}>{m.status}</Badge>
                         </div>
                       </div>
                       <ArrowRight size={14} className={styles.arrow} />
@@ -399,8 +525,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
 
           {/* Sidebar Column */}
           <div className={styles.sidebarCol}>
-            {/* Upcoming Meeting Countdown */}
-            <CountdownTimer />
+            {/* Active / Last Meeting Widget */}
+            <MeetingWidget liveMeeting={liveMeeting} lastMeeting={lastMeeting} />
 
             {/* Live Intelligence Activity Feed */}
             <div className={`${styles.intelligenceFeedCard} glass-card`}>
@@ -409,45 +535,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
                 <span className={styles.feedTitle}>Intelligence Feed</span>
               </div>
               <div className={styles.feedItems}>
-                <div className={styles.feedItem}>
-                  <div className={`${styles.feedDot} ${styles.dotEmerald}`} />
-                  <div className={styles.feedTextContainer}>
-                    <p className={styles.feedText}>
-                      <strong>Budget Risk</strong> detected in <em>Q3 Design Review</em> meeting.
-                    </p>
-                    <span className={styles.feedTime}>10m ago</span>
+                {intelligenceFeed.length === 0 && (
+                  <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>
+                    Waiting for activity...
                   </div>
-                </div>
-
-                <div className={styles.feedItem}>
-                  <div className={`${styles.feedDot} ${styles.dotIndigo}`} />
-                  <div className={styles.feedTextContainer}>
-                    <p className={styles.feedText}>
-                      Rahul was **mentioned** by Mia regarding <em>Sprint Planning</em> deliverables.
-                    </p>
-                    <span className={styles.feedTime}>1h ago</span>
+                )}
+                {intelligenceFeed.map(item => (
+                  <div key={item.id} className={styles.feedItem}>
+                    <div className={`${styles.feedDot} ${styles[`dot${item.color.charAt(0).toUpperCase() + item.color.slice(1)}`]}`} />
+                    <div className={styles.feedTextContainer}>
+                      <p className={styles.feedText}>
+                        <ReactMarkdown 
+                          components={{ p: React.Fragment, strong: 'strong', em: 'em' }}
+                        >
+                          {item.text}
+                        </ReactMarkdown>
+                      </p>
+                      <span className={styles.feedTime}>
+                        {Math.floor((Date.now() - item.date.getTime()) / 60000) < 60 
+                          ? `${Math.max(1, Math.floor((Date.now() - item.date.getTime()) / 60000))}m ago`
+                          : `${Math.floor((Date.now() - item.date.getTime()) / 3600000)}h ago`}
+                      </span>
+                    </div>
                   </div>
-                </div>
-
-                <div className={styles.feedItem}>
-                  <div className={`${styles.feedDot} ${styles.dotAmber}`} />
-                  <div className={styles.feedTextContainer}>
-                    <p className={styles.feedText}>
-                      Action item <em>"Submit wireframe concepts"</em> sync'd to <strong>Linear</strong>.
-                    </p>
-                    <span className={styles.feedTime}>3h ago</span>
-                  </div>
-                </div>
-
-                <div className={styles.feedItem}>
-                  <div className={`${styles.feedDot} ${styles.dotPurple}`} />
-                  <div className={styles.feedTextContainer}>
-                    <p className={styles.feedText}>
-                      Weekly summary draft compiled and emailed to the <strong>Engineering Team</strong>.
-                    </p>
-                    <span className={styles.feedTime}>5h ago</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -458,7 +569,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
                 <span>AI Meeting Tip</span>
               </div>
               <p className={styles.proTipDesc}>
-                Your average speaking monologue is 3.5 minutes. Try asking open-ended questions like "Mia, what are your thoughts?" to increase team engagement by 15%.
+                {proTip}
               </p>
             </div>
           </div>
@@ -466,45 +577,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenCommandPalette }) =>
       </div>
 
       {/* Join Call Modal */}
-      <Modal isOpen={isJoinOpen} onClose={() => { setIsJoinOpen(false); setBotError(''); }} title="Join Meeting & Call Bot">
-        <form onSubmit={handleJoinSubmit} className={styles.modalForm}>
-          <div className={styles.formGroup}>
-            <label>Meeting Title <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span></label>
-            <Input
-              placeholder="e.g. Q3 Design Review"
-              value={meetingTitleInput}
-              onChange={(e) => setMeetingTitleInput(e.target.value)}
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>Meeting URL <span style={{ color: 'var(--rose)', fontSize: '0.75rem' }}>*</span></label>
-            <Input
-              required
-              placeholder="https://meet.google.com/xxx-yyyy-zzz"
-              value={meetingUrlInput}
-              onChange={(e) => { setMeetingUrlInput(e.target.value); setBotError(''); }}
-            />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem', display: 'block' }}>Supports Google Meet and Microsoft Teams</span>
-          </div>
-          {botError && (
-            <div style={{ color: 'var(--rose)', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>{botError}</div>
-          )}
-          {startBotMutation.error && (
-            <div style={{ color: 'var(--rose)', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>
-              {(startBotMutation.error as any)?.response?.data?.detail || 'Failed to start bot'}
-            </div>
-          )}
-          <div className={styles.modalActions}>
-            <Button variant="outline" type="button" onClick={() => setIsJoinOpen(false)} disabled={startBotMutation.isPending}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" disabled={startBotMutation.isPending}
-              icon={startBotMutation.isPending ? <Loader2 size={14} className="spin" /> : undefined}>
-              {startBotMutation.isPending ? 'Calling Bot...' : 'Call Zapper Bot'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <JoinMeetingModal isOpen={isJoinOpen} onClose={() => setIsJoinOpen(false)} />
 
       {/* Upload Modal */}
       <Modal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} title="Upload Recording">

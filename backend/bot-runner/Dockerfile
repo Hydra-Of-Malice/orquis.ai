@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb pulseaudio pulseaudio-utils \
     ffmpeg \
     libpulse0 libpulse-dev \
+    libopus-dev \
     curl wget ca-certificates \
     fonts-liberation fonts-noto \
     && rm -rf /var/lib/apt/lists/*

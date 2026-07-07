@@ -30,19 +30,24 @@ async def ws_meeting(websocket: WebSocket, meeting_id: str):
         await pubsub.subscribe(f"zapper:live:{meeting_id}")
 
         async def redis_listener():
-            async for message in pubsub.listen():
-                if message["type"] == "message":
-                    try:
-                        data = json.loads(message["data"])
-                        await websocket.send_json(data)
-                    except Exception:
-                        pass
+            try:
+                async for message in pubsub.listen():
+                    if message["type"] == "message":
+                        try:
+                            data = json.loads(message["data"])
+                            await websocket.send_json(data)
+                        except Exception as e:
+                            print(f"[websocket] Error sending json: {e}", flush=True)
+            except Exception as e:
+                print(f"[websocket] Redis listener error: {e}", flush=True)
+                raise e
 
-        await asyncio.gather(
+        results = await asyncio.gather(
             redis_listener(),
             _ws_keepalive(websocket),
             return_exceptions=True,
         )
+        print(f"[websocket] Gather finished for meeting {meeting_id}: {results}", flush=True)
     except WebSocketDisconnect:
         pass
     except Exception as e:

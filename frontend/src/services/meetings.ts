@@ -47,7 +47,11 @@ export const meetingsApi = {
     api.get<Meeting>(`/meetings/${id}`).then(r => r.data),
 
   startBot: (data: StartBotRequest) =>
-    api.post<Meeting>('/meetings/start-bot', data).then(r => r.data),
+    api.post<{ meeting_id: string; slot: number }>('/meetings/start', {
+      url: data.meeting_url,
+      display_name: data.title,
+      visual_capture_mode: data.visual_capture_mode
+    }).then(r => r.data),
 
   stopBot: (id: string) =>
     api.post(`/meetings/${id}/stop`).then(r => r.data),

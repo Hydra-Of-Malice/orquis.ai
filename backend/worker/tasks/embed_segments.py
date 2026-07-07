@@ -83,7 +83,7 @@ def embed_segments(self, meeting_id: str):
                     session.execute(
                         text("""
                             UPDATE transcript_segments
-                            SET embedding = :emb::jsonb
+                            SET embedding = CAST(:emb AS jsonb)
                             WHERE id = :id
                         """),
                         {"emb": json.dumps(emb), "id": seg_id},

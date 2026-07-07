@@ -23,10 +23,11 @@ def _get_blob_client():
 
 
 def _upload_file(local_path: str, blob_name: str, content_type: str = "application/octet-stream") -> str:
+    from azure.storage.blob import ContentSettings
     client = _get_blob_client()
     cc = client.get_blob_client(container=AZURE_CONTAINER, blob=blob_name)
     with open(local_path, "rb") as f:
-        cc.upload_blob(f, overwrite=True, content_settings={"content_type": content_type})
+        cc.upload_blob(f, overwrite=True, content_settings=ContentSettings(content_type=content_type))
     account = client.account_name
     return f"https://{account}.blob.core.windows.net/{AZURE_CONTAINER}/{blob_name}"
 
